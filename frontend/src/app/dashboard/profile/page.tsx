@@ -222,60 +222,60 @@ export default function ProfilePage() {
             }
           >
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 text-xs">
-              <div className="p-3 bg-gray-50 rounded-lg">
-                <span className="text-gray-500 block">Full Name</span>
-                <span className="text-sm font-semibold text-gray-900 mt-0.5 block">
+              <div className="p-3 bg-campusblue-50/50 rounded-md border border-campusblue-50">
+                <span className="text-campusblue-500 block">Full Name</span>
+                <span className="text-sm font-semibold text-campusblue-900 mt-0.5 block">
                   {profileData.basic_info.first_name || ""} {profileData.basic_info.last_name || "—"}
                 </span>
               </div>
-              <div className="p-3 bg-gray-50 rounded-lg">
-                <span className="text-gray-500 block">Department / Branch</span>
-                <span className="text-sm font-semibold text-gray-900 mt-0.5 block">
+              <div className="p-3 bg-campusblue-50/50 rounded-md border border-campusblue-50">
+                <span className="text-campusblue-500 block">Department / Branch</span>
+                <span className="text-sm font-semibold text-campusblue-900 mt-0.5 block">
                   {profileData.basic_info.branch || "—"}
                 </span>
               </div>
-              <div className="p-3 bg-gray-50 rounded-lg">
-                <span className="text-gray-500 block">Current CGPA</span>
-                <span className="text-sm font-bold text-blue-600 mt-0.5 block">
+              <div className="p-3 bg-campusblue-50/50 rounded-md border border-campusblue-50">
+                <span className="text-campusblue-500 block">Current CGPA</span>
+                <span className="text-sm font-bold text-campusblue-700 mt-0.5 block">
                   {profileData.basic_info.cgpa !== null ? profileData.basic_info.cgpa : "—"} / 10.0
                 </span>
               </div>
-              <div className="p-3 bg-gray-50 rounded-lg">
-                <span className="text-gray-500 block">Graduation Year</span>
-                <span className="text-sm font-semibold text-gray-900 mt-0.5 block">
+              <div className="p-3 bg-campusblue-50/50 rounded-md border border-campusblue-50">
+                <span className="text-campusblue-500 block">Graduation Year</span>
+                <span className="text-sm font-semibold text-campusblue-900 mt-0.5 block">
                   {profileData.basic_info.graduation_year || "—"}
                 </span>
               </div>
-              <div className="p-3 bg-gray-50 rounded-lg">
-                <span className="text-gray-500 block">Active Backlogs</span>
-                <span className={`text-sm font-semibold mt-0.5 block ${profileData.basic_info.backlogs_current ? "text-rose-600" : "text-emerald-600"}`}>
+              <div className="p-3 bg-campusblue-50/50 rounded-md border border-campusblue-50">
+                <span className="text-campusblue-500 block">Active Backlogs</span>
+                <span className={`text-sm font-semibold mt-0.5 block ${profileData.basic_info.backlogs_current ? "text-campusblue-700" : "text-campusblue-700"}`}>
                   {profileData.basic_info.backlogs_current ?? 0}
                 </span>
               </div>
-              <div className="p-3 bg-gray-50 rounded-lg">
-                <span className="text-gray-500 block">Total Historical Backlogs</span>
-                <span className="text-sm font-semibold text-gray-900 mt-0.5 block">
+              <div className="p-3 bg-campusblue-50/50 rounded-md border border-campusblue-50">
+                <span className="text-campusblue-500 block">Total Historical Backlogs</span>
+                <span className="text-sm font-semibold text-campusblue-900 mt-0.5 block">
                   {profileData.basic_info.backlogs_history ?? 0}
                 </span>
               </div>
-              <div className="p-3 bg-gray-50 rounded-lg">
-                <span className="text-gray-500 block">Phone</span>
-                <span className="text-sm font-semibold text-gray-900 mt-0.5 block">
+              <div className="p-3 bg-campusblue-50/50 rounded-md border border-campusblue-50">
+                <span className="text-campusblue-500 block">Phone</span>
+                <span className="text-sm font-semibold text-campusblue-900 mt-0.5 block">
                   {profileData.basic_info.phone || "—"}
                 </span>
               </div>
-              <div className="p-3 bg-gray-50 rounded-lg">
-                <span className="text-gray-500 block">Date of Birth / Gender</span>
-                <span className="text-sm font-semibold text-gray-900 mt-0.5 block">
+              <div className="p-3 bg-campusblue-50/50 rounded-md border border-campusblue-50">
+                <span className="text-campusblue-500 block">Date of Birth / Gender</span>
+                <span className="text-sm font-semibold text-campusblue-900 mt-0.5 block">
                   {profileData.basic_info.dob || "—"} ({profileData.basic_info.gender || "—"})
                 </span>
               </div>
             </div>
 
             {profileData.basic_info.profile_metadata?.bio && (
-              <div className="mt-4 p-3.5 bg-blue-50/50 border border-blue-100 rounded-lg text-xs">
-                <span className="font-bold text-blue-900 block mb-1">Biography</span>
-                <p className="text-gray-700 leading-relaxed">
+              <div className="mt-4 p-3.5 bg-campusblue-50 border border-campusblue-50 shadow-sm rounded-lg text-xs">
+                <span className="font-bold text-campusblue-900 font-serif block mb-1">Biography</span>
+                <p className="text-campusblue-800 leading-relaxed">
                   {profileData.basic_info.profile_metadata.bio}
                 </p>
               </div>
@@ -297,86 +297,86 @@ export default function ProfilePage() {
             }
           >
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
-              <div className="p-3 bg-gray-50 rounded-lg">
-                <span className="text-gray-500 block mb-1">LinkedIn</span>
+              <div className="p-3 bg-campusblue-50/50 rounded-md border border-campusblue-50">
+                <span className="text-campusblue-500 block mb-1">LinkedIn</span>
                 {profileData.basic_info.profile_metadata?.linkedin_url ? (
                   <a
                     href={profileData.basic_info.profile_metadata.linkedin_url}
                     target="_blank"
                     rel="noreferrer"
-                    className="text-blue-600 hover:underline font-medium break-all flex items-center gap-1"
+                    className="text-campusblue-700 hover:underline font-medium break-all flex items-center gap-1"
                   >
                     <span>View Profile</span>
                     <span>&nearr;</span>
                   </a>
                 ) : (
-                  <span className="text-gray-400">Not provided</span>
+                  <span className="text-campusblue-300">Not provided</span>
                 )}
               </div>
 
-              <div className="p-3 bg-gray-50 rounded-lg">
-                <span className="text-gray-500 block mb-1">GitHub</span>
+              <div className="p-3 bg-campusblue-50/50 rounded-md border border-campusblue-50">
+                <span className="text-campusblue-500 block mb-1">GitHub</span>
                 {profileData.basic_info.profile_metadata?.github_url ? (
                   <a
                     href={profileData.basic_info.profile_metadata.github_url}
                     target="_blank"
                     rel="noreferrer"
-                    className="text-blue-600 hover:underline font-medium break-all flex items-center gap-1"
+                    className="text-campusblue-700 hover:underline font-medium break-all flex items-center gap-1"
                   >
                     <span>View GitHub</span>
                     <span>&nearr;</span>
                   </a>
                 ) : (
-                  <span className="text-gray-400">Not provided</span>
+                  <span className="text-campusblue-300">Not provided</span>
                 )}
               </div>
 
-              <div className="p-3 bg-gray-50 rounded-lg">
-                <span className="text-gray-500 block mb-1">Portfolio</span>
+              <div className="p-3 bg-campusblue-50/50 rounded-md border border-campusblue-50">
+                <span className="text-campusblue-500 block mb-1">Portfolio</span>
                 {profileData.basic_info.profile_metadata?.portfolio_url ? (
                   <a
                     href={profileData.basic_info.profile_metadata.portfolio_url}
                     target="_blank"
                     rel="noreferrer"
-                    className="text-blue-600 hover:underline font-medium break-all flex items-center gap-1"
+                    className="text-campusblue-700 hover:underline font-medium break-all flex items-center gap-1"
                   >
                     <span>Visit Portfolio</span>
                     <span>&nearr;</span>
                   </a>
                 ) : (
-                  <span className="text-gray-400">Not provided</span>
+                  <span className="text-campusblue-300">Not provided</span>
                 )}
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 pt-4 border-t border-gray-100 text-xs">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 pt-4 border-t border-campusblue-50 text-xs">
               <div>
-                <span className="text-gray-500 block mb-1">Target Roles</span>
+                <span className="text-campusblue-500 block mb-1">Target Roles</span>
                 {profileData.basic_info.profile_metadata?.preferred_job_roles?.length ? (
                   <div className="flex flex-wrap gap-1.5">
                     {profileData.basic_info.profile_metadata.preferred_job_roles.map((r, i) => (
-                      <span key={i} className="px-2 py-0.5 bg-blue-50 text-blue-700 rounded-md border border-blue-200">
+                      <span key={i} className="px-2 py-0.5 bg-campusblue-50 text-campusblue-800 rounded-md border border-campusblue-100">
                         {r}
                       </span>
                     ))}
                   </div>
                 ) : (
-                  <span className="text-gray-400">None specified</span>
+                  <span className="text-campusblue-300">None specified</span>
                 )}
               </div>
 
               <div>
-                <span className="text-gray-500 block mb-1">Career Interests</span>
+                <span className="text-campusblue-500 block mb-1">Career Interests</span>
                 {profileData.basic_info.profile_metadata?.career_interests?.length ? (
                   <div className="flex flex-wrap gap-1.5">
                     {profileData.basic_info.profile_metadata.career_interests.map((ci, i) => (
-                      <span key={i} className="px-2 py-0.5 bg-purple-50 text-purple-700 rounded-md border border-purple-200">
+                      <span key={i} className="px-2 py-0.5 bg-campusblue-50 text-campusblue-800 rounded-md border border-campusblue-100">
                         {ci}
                       </span>
                     ))}
                   </div>
                 ) : (
-                  <span className="text-gray-400">None specified</span>
+                  <span className="text-campusblue-300">None specified</span>
                 )}
               </div>
             </div>
@@ -413,17 +413,17 @@ export default function ProfilePage() {
                 {profileData.academic_history.map((item) => (
                   <div key={item.id} className="py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 first:pt-0 last:pb-0">
                     <div>
-                      <h4 className="text-sm font-semibold text-gray-900">{item.qualification}</h4>
-                      <p className="text-xs text-gray-600 mt-0.5">
+                      <h4 className="text-sm font-semibold text-campusblue-900">{item.qualification}</h4>
+                      <p className="text-xs text-campusblue-700 mt-0.5">
                         {item.institution} {item.specialization ? `• ${item.specialization}` : ""}
                       </p>
-                      <p className="text-2xs text-gray-400 mt-0.5">
+                      <p className="text-2xs text-campusblue-300 mt-0.5">
                         {item.start_year || "—"} - {item.end_year || "Present"}
                       </p>
                     </div>
 
                     <div className="flex items-center gap-3">
-                      <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-blue-50 text-blue-800 border border-blue-200">
+                      <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-campusblue-50 text-campusblue-900 border border-campusblue-100">
                         {item.score_type}: {item.score_value}
                       </span>
                       <Button
@@ -440,7 +440,7 @@ export default function ProfilePage() {
                         variant="ghost"
                         size="sm"
                         onClick={() => handleDeleteAcademic(item)}
-                        className="text-rose-600 hover:text-rose-700 hover:bg-rose-50"
+                        className="text-campusblue-700 hover:text-campusblue-900 hover:bg-campusblue-50 rounded p-1 transition"
                       >
                         Delete
                       </Button>
@@ -481,12 +481,12 @@ export default function ProfilePage() {
             {profileData.skills.length > 0 ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
                 {profileData.skills.map((s) => (
-                  <div key={s.id} className="p-3.5 bg-gray-50 border border-gray-200 rounded-xl flex items-center justify-between gap-2">
+                  <div key={s.id} className="p-3.5 bg-white border border-campusblue-100 rounded-lg shadow-sm flex items-center justify-between gap-2">
                     <div>
-                      <h4 className="text-xs font-bold text-gray-900">{s.skill_name}</h4>
+                      <h4 className="text-xs font-bold text-campusblue-900">{s.skill_name}</h4>
                       <div className="flex items-center gap-1.5 mt-1">
                         <StatusBadge status={s.proficiency_level} size="sm" />
-                        <span className="text-2xs text-gray-500">{s.months_experience} mo</span>
+                        <span className="text-2xs text-campusblue-500">{s.months_experience} mo</span>
                       </div>
                     </div>
 
@@ -497,7 +497,7 @@ export default function ProfilePage() {
                           setSelectedSkill(s);
                           setIsSkillModalOpen(true);
                         }}
-                        className="p-1 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded cursor-pointer transition"
+                        className="p-1 text-campusblue-300 hover:text-campusblue-700 hover:bg-campusblue-50 rounded cursor-pointer transition"
                         title="Edit Skill"
                       >
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -507,7 +507,7 @@ export default function ProfilePage() {
                       <button
                         type="button"
                         onClick={() => handleDeleteSkill(s)}
-                        className="p-1 text-gray-400 hover:text-rose-600 hover:bg-rose-50 rounded cursor-pointer transition"
+                        className="p-1 text-campusblue-300 hover:text-campusblue-700 hover:bg-campusblue-50 rounded cursor-pointer transition"
                         title="Delete Skill"
                       >
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -551,16 +551,16 @@ export default function ProfilePage() {
             {profileData.projects.length > 0 ? (
               <div className="space-y-4">
                 {profileData.projects.map((proj) => (
-                  <div key={proj.id} className="p-4 bg-gray-50 border border-gray-200 rounded-xl">
+                  <div key={proj.id} className="p-4 bg-white border border-campusblue-100 rounded-lg shadow-sm">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
-                      <h4 className="text-sm font-bold text-gray-900">{proj.title}</h4>
+                      <h4 className="text-sm font-bold text-campusblue-900">{proj.title}</h4>
                       <div className="flex items-center gap-2">
                         {proj.project_url && (
                           <a
                             href={proj.project_url}
                             target="_blank"
                             rel="noreferrer"
-                            className="text-xs font-semibold text-blue-600 hover:underline flex items-center gap-1"
+                            className="text-xs font-semibold text-campusblue-700 hover:underline flex items-center gap-1"
                           >
                             <span>Live Project / Code</span>
                             <span>&nearr;</span>
@@ -580,7 +580,7 @@ export default function ProfilePage() {
                           variant="ghost"
                           size="sm"
                           onClick={() => handleDeleteProject(proj)}
-                          className="text-rose-600 hover:text-rose-700 hover:bg-rose-50"
+                          className="text-campusblue-700 hover:text-campusblue-900 hover:bg-campusblue-50 rounded p-1 transition"
                         >
                           Delete
                         </Button>
@@ -588,7 +588,7 @@ export default function ProfilePage() {
                     </div>
 
                     {proj.description && (
-                      <p className="text-xs text-gray-700 leading-relaxed mb-2">
+                      <p className="text-xs text-campusblue-800 leading-relaxed mb-2">
                         {proj.description}
                       </p>
                     )}
@@ -596,7 +596,7 @@ export default function ProfilePage() {
                     {proj.technologies && (
                       <div className="flex flex-wrap gap-1.5">
                         {proj.technologies.split(",").map((tech, i) => (
-                          <span key={i} className="px-2 py-0.5 bg-gray-200 text-gray-800 text-2xs font-semibold rounded">
+                          <span key={i} className="px-2 py-0.5 bg-campusblue-50 text-campusblue-900 text-2xs font-semibold rounded">
                             {tech.trim()}
                           </span>
                         ))}
@@ -640,20 +640,31 @@ export default function ProfilePage() {
                 {profileData.certifications.map((cert) => (
                   <div key={cert.id} className="py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 first:pt-0 last:pb-0">
                     <div>
-                      <h4 className="text-sm font-semibold text-gray-900">{cert.name}</h4>
-                      <p className="text-xs text-gray-600 mt-0.5">
-                        Issued by: <span className="font-medium text-gray-800">{cert.issuing_org}</span>
+                      <h4 className="text-sm font-semibold text-campusblue-900">{cert.name}</h4>
+                      <p className="text-xs text-campusblue-700 mt-0.5">
+                        Issued by: <span className="font-medium text-campusblue-900">{cert.issuing_org}</span>
                       </p>
-                      <p className="text-2xs text-gray-400 mt-0.5">
+                      <p className="text-2xs text-campusblue-300 mt-0.5">
                         Issued: {cert.issue_date || "—"} {cert.expiry_date ? `• Expires: ${cert.expiry_date}` : "• Non-expiring"}
                       </p>
                     </div>
 
                     <div className="flex items-center gap-2">
                       {cert.credential_id && (
-                        <span className="text-2xs font-mono px-2 py-1 bg-gray-100 text-gray-600 rounded">
+                        <span className="text-2xs font-mono px-2 py-1 bg-white 100 text-campusblue-900 rounded">
                           {cert.credential_id}
                         </span>
+                      )}
+                      {cert.proof_path && (
+                        <a
+                          href={`http://127.0.0.1:8001${cert.proof_path}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs font-semibold text-campusblue-800 hover:text-campusblue-900 bg-campusblue-50 hover:bg-campusblue-100 font-serif px-3 py-1.5 rounded-md transition flex items-center gap-1"
+                        >
+                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>
+                          View PDF
+                        </a>
                       )}
                       <Button
                         variant="outline"
@@ -669,7 +680,7 @@ export default function ProfilePage() {
                         variant="ghost"
                         size="sm"
                         onClick={() => handleDeleteCert(cert)}
-                        className="text-rose-600 hover:text-rose-700 hover:bg-rose-50"
+                        className="text-campusblue-700 hover:text-campusblue-900 hover:bg-campusblue-50 rounded p-1 transition"
                       >
                         Delete
                       </Button>
@@ -758,3 +769,9 @@ export default function ProfilePage() {
     </AppLayout>
   );
 }
+
+
+
+
+
+

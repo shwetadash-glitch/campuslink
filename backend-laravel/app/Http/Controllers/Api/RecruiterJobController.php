@@ -6,7 +6,11 @@ use App\Models\Job;
 
 class RecruiterJobController extends Controller {
     public function index(Request $request) {
-        return $request->user()->recruiterProfile->company->jobs;
+        $recruiter = $request->user()->recruiterProfile;
+        if ($recruiter) {
+            return $recruiter->company->jobs()->with('requirements.skill')->get();
+        }
+        return \App\Models\Job::with('requirements.skill')->get();
     }
     public function store(Request $request) {
         $validated = $request->validate([

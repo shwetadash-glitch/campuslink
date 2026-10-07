@@ -176,7 +176,7 @@ export default function MasterSkillsPage() {
         >
           <form onSubmit={handleSubmit} className="space-y-4">
             {formError && (
-              <div className="p-3 bg-rose-50 border border-rose-200 text-rose-700 text-xs rounded-lg">
+              <div className="p-3 bg-campusblue-50 border border-campusblue-100 text-campusblue-800 text-xs rounded-lg">
                 {formError}
               </div>
             )}
@@ -215,13 +215,13 @@ export default function MasterSkillsPage() {
             placeholder="Search skills by name..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full sm:w-72 px-3.5 py-2 text-xs rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full sm:w-72 px-3.5 py-2 text-xs rounded-lg border border-campusblue-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
 
           <select
             value={categoryFilter}
             onChange={(e) => setCategoryFilter(e.target.value)}
-            className="px-3 py-2 text-xs rounded-lg border border-gray-300 bg-white font-medium focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="px-3 py-2 text-xs rounded-lg border border-campusblue-200 bg-white font-medium focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
             <option value="ALL">All Categories</option>
             {categories.map((c) => (
@@ -254,7 +254,7 @@ export default function MasterSkillsPage() {
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs border-collapse">
               <thead>
-                <tr className="bg-gray-50 border-b border-gray-200 text-gray-600 font-semibold uppercase text-2xs tracking-wider">
+                <tr className="bg-campusblue-50 border-b border-campusblue-100 text-campusblue-700 font-semibold uppercase text-2xs tracking-wider">
                   <th className="p-3.5">Skill Name</th>
                   <th className="p-3.5">Category</th>
                   <th className="p-3.5">Description</th>
@@ -265,33 +265,33 @@ export default function MasterSkillsPage() {
               </thead>
               <tbody className="divide-y divide-gray-200">
                 {skills.map((s) => (
-                  <tr key={s.id} className="hover:bg-gray-50/70 transition-colors">
-                    <td className="p-3.5 font-bold text-gray-900">
+                  <tr key={s.id} className="hover:bg-campusblue-50/70 transition-colors">
+                    <td className="p-3.5 font-bold text-campusblue-900">
                       {s.name}
                     </td>
                     <td className="p-3.5">
                       {s.category ? (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-2xs font-bold bg-blue-50 text-blue-700 border border-blue-200">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-2xs font-bold bg-campusblue-50 text-campusblue-800 border border-campusblue-100">
                           {s.category}
                         </span>
                       ) : (
-                        <span className="text-gray-400">—</span>
+                        <span className="text-campusblue-300">—</span>
                       )}
                     </td>
-                    <td className="p-3.5 text-gray-600 max-w-xs truncate">
+                    <td className="p-3.5 text-campusblue-700 max-w-xs truncate">
                       {s.description || "—"}
                     </td>
                     <td className="p-3.5">
-                      <span className="font-semibold text-gray-800">
+                      <span className="font-semibold text-campusblue-900">
                         {s.student_count}
                       </span>{" "}
-                      <span className="text-2xs text-gray-400">profiles</span>
+                      <span className="text-2xs text-campusblue-300">profiles</span>
                     </td>
                     <td className="p-3.5">
-                      <span className="font-semibold text-gray-800">
+                      <span className="font-semibold text-campusblue-900">
                         {s.job_count}
                       </span>{" "}
-                      <span className="text-2xs text-gray-400">jobs</span>
+                      <span className="text-2xs text-campusblue-300">jobs</span>
                     </td>
                     <td className="p-3.5 text-right">
                       <div className="flex items-center justify-end gap-1.5">
@@ -306,7 +306,7 @@ export default function MasterSkillsPage() {
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="text-2xs h-7 px-2 text-rose-600 hover:bg-rose-50 hover:text-rose-700"
+                          className="text-2xs h-7 px-2 text-campusblue-700 hover:bg-campusblue-50 hover:text-campusblue-800"
                           onClick={() => setDeletingSkill(s)}
                         >
                           Delete
@@ -323,3 +323,7 @@ export default function MasterSkillsPage() {
     </AppLayout>
   );
 }
+
+
+
+

@@ -67,12 +67,12 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({
   }
 
   const variantStyles: Record<BadgeVariant, string> = {
-    success: "bg-emerald-50 text-emerald-700 border-emerald-200",
-    info: "bg-blue-50 text-blue-700 border-blue-200",
-    warning: "bg-amber-50 text-amber-700 border-amber-200",
-    danger: "bg-rose-50 text-rose-700 border-rose-200",
-    purple: "bg-purple-50 text-purple-700 border-purple-200",
-    neutral: "bg-gray-100 text-gray-700 border-gray-200",
+    success: "bg-campusblue-100 text-campusblue-900 border-campusblue-300",
+    info: "bg-white text-campusblue-700 border-campusblue-300",
+    warning: "bg-campusblue-300 text-white border-campusblue-500",
+    danger: "bg-campusblue-800 text-white border-campusblue-900",
+    purple: "bg-campusblue-700 text-white border-campusblue-800",
+    neutral: "bg-campusblue-50 text-campusblue-800 border-campusblue-200",
   };
 
   const sizeStyles = {
@@ -84,9 +84,13 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({
 
   return (
     <span
-      className={`inline-flex items-center font-semibold rounded-full border ${variantStyles[resolvedVariant]} ${sizeStyles[size]} ${className}`}
+      className={`inline-flex items-center font-serif font-bold rounded-md border shadow-sm tracking-wide ${variantStyles[resolvedVariant]} ${sizeStyles[size]} ${className}`}
     >
       {formattedLabel}
     </span>
   );
 };
+
+
+
+

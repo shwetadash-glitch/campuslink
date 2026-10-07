@@ -15,8 +15,8 @@ export const ErrorState: React.FC<ErrorStateProps> = ({
   className = "py-12 px-4 text-center",
 }) => {
   return (
-    <div className={`flex flex-col items-center justify-center bg-rose-50/50 border border-rose-200 rounded-xl ${className}`}>
-      <div className="w-12 h-12 mb-3 rounded-full bg-rose-100 flex items-center justify-center text-rose-600">
+    <div className={`flex flex-col items-center justify-center bg-campusblue-50/50 border border-campusblue-100 rounded-lg font-serif ${className}`}>
+      <div className="w-12 h-12 mb-3 rounded-full bg-campusblue-50 flex items-center justify-center text-campusblue-700">
         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path
             strokeLinecap="round"
@@ -26,8 +26,8 @@ export const ErrorState: React.FC<ErrorStateProps> = ({
           />
         </svg>
       </div>
-      <h4 className="text-sm font-semibold text-rose-900">Failed to Load</h4>
-      <p className="text-xs text-rose-600 max-w-sm mt-1">{message}</p>
+      <h4 className="text-sm font-semibold text-campusblue-900">Failed to Load</h4>
+      <p className="text-xs text-campusblue-700 max-w-sm mt-1">{message}</p>
       {onRetry && (
         <Button variant="danger" size="sm" onClick={onRetry} className="mt-4">
           Retry
@@ -36,3 +36,6 @@ export const ErrorState: React.FC<ErrorStateProps> = ({
     </div>
   );
 };
+
+
+

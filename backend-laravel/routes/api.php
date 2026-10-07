@@ -1,6 +1,7 @@
 <?php
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Http;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\StudentController;
 use App\Http\Controllers\Api\RecruiterController;
@@ -11,6 +12,8 @@ use App\Http\Controllers\Api\SkillController;
 use App\Http\Controllers\Api\ReadinessController;
 use App\Http\Controllers\Api\OfficerController;
 use App\Http\Controllers\Api\JobApplicationController;
+use App\Http\Controllers\Api\MessageController;
+use App\Http\Controllers\Api\AiHelperController;
 
 Route::prefix('v1')->group(function () {
     Route::post('/auth/login', [AuthController::class, 'login']);
@@ -24,6 +27,11 @@ Route::prefix('v1')->group(function () {
 
     Route::middleware('auth:sanctum')->group(function () {
         Route::get('/auth/me', [AuthController::class, 'me']);
+        
+        Route::get('/messages/contacts', [MessageController::class, 'contacts']);
+        Route::get('/messages/{userId}', [MessageController::class, 'conversation']);
+        Route::post('/messages', [MessageController::class, 'send']);
+        Route::post('/ai-interview/chat', [AiHelperController::class, 'chat']);
         
         Route::get('/jobs/available', [JobController::class, 'index']);
         Route::post('/jobs/{job}/requirements', [JobController::class, 'addRequirement']); 
@@ -67,7 +75,7 @@ Route::prefix('v1')->group(function () {
             Route::get('/me/drives', [StudentController::class, 'drives']);
         });
 
-        Route::middleware('role:RECRUITER')->prefix('recruiters')->group(function () {
+        Route::middleware('role:RECRUITER,SUPER_ADMIN,PLACEMENT_OFFICER')->prefix('recruiters')->group(function () {
             Route::get('/me', [RecruiterController::class, 'me']);
             Route::put('/me/company', [RecruiterController::class, 'updateCompany']);
             Route::get('/me/dashboard', [RecruiterController::class, 'dashboard']);
@@ -100,6 +108,7 @@ Route::prefix('v1')->group(function () {
             Route::get('/students', [OfficerController::class, 'students']);
             Route::get('/students/{id}', [OfficerController::class, 'student']);
             Route::get('/companies', [OfficerController::class, 'companies']);
+            Route::get('/drives/{drive}/ai-shortlist', [OfficerController::class, 'aiShortlist']);
             Route::post('/companies', [OfficerController::class, 'storeCompany']);
         });
         
@@ -118,3 +127,16 @@ Route::prefix('v1')->group(function () {
     });
 });
 
+
+Route::get('/ollama-test', function () {
+    $response = Http::timeout(120)->post(
+        env('OLLAMA_URL') . '/api/generate',
+        [
+            'model' => env('OLLAMA_MODEL', 'llama3.2'),
+            'prompt' => 'Give me one interview question for a computer science student.',
+            'stream' => false,
+        ]
+    );
+
+    return $response->json();
+});

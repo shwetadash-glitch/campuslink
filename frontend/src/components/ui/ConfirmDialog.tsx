@@ -49,9 +49,11 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
         </>
       }
     >
-      <div className="text-sm text-gray-600">
+      <div className="text-sm text-campusblue-700">
         <p>{message}</p>
       </div>
     </Modal>
   );
 };
+
+

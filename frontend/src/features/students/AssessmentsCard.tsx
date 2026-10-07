@@ -22,16 +22,16 @@ export const AssessmentsCard: React.FC<AssessmentsCardProps> = ({ assessments })
             return (
               <div key={a.id} className="py-3.5 flex items-center justify-between first:pt-0 last:pb-0">
                 <div>
-                  <h4 className="text-sm font-semibold text-gray-900">{a.assessment_type}</h4>
-                  <p className="text-xs text-gray-500">
+                  <h4 className="text-sm font-semibold text-campusblue-900">{a.assessment_type}</h4>
+                  <p className="text-xs text-campusblue-500">
                     Evaluated on: {new Date(a.assessment_date).toLocaleDateString()}
                   </p>
                 </div>
                 <div className="text-right">
-                  <span className="text-base font-bold text-blue-700">
+                  <span className="text-base font-bold text-campusblue-800">
                     {a.score} / {a.max_score}
                   </span>
-                  <span className="ml-2 text-xs font-semibold px-2 py-0.5 rounded-full bg-blue-50 text-blue-800 border border-blue-200">
+                  <span className="ml-2 text-xs font-semibold px-2 py-0.5 rounded-full bg-campusblue-50 text-campusblue-900 border border-campusblue-100">
                     {pct}%
                   </span>
                 </div>
@@ -48,3 +48,6 @@ export const AssessmentsCard: React.FC<AssessmentsCardProps> = ({ assessments })
     </Card>
   );
 };
+
+
+

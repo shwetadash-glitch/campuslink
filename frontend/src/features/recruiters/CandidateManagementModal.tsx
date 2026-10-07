@@ -135,7 +135,7 @@ export const CandidateManagementModal: React.FC<CandidateManagementModalProps> =
         size="2xl"
         footer={
           <div className="flex items-center justify-between w-full">
-            <span className="text-xs text-gray-500 font-medium">
+            <span className="text-xs text-campusblue-500 font-medium">
               Showing {filteredCandidates.length} of {candidates.length} candidate(s)
             </span>
             <Button variant="outline" size="sm" onClick={onClose}>
@@ -146,16 +146,16 @@ export const CandidateManagementModal: React.FC<CandidateManagementModalProps> =
       >
         <div className="space-y-4">
           {/* Summary & Actions Bar */}
-          <div className="p-4 bg-gray-50 rounded-xl flex flex-col md:flex-row md:items-center justify-between gap-3">
+          <div className="p-4 bg-campusblue-50 rounded-xl flex flex-col md:flex-row md:items-center justify-between gap-3">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="text-xs font-semibold text-gray-700">Candidates:</span>
-              <span className="px-2.5 py-1 bg-white border border-gray-200 rounded-full text-xs font-bold text-gray-800">
+              <span className="text-xs font-semibold text-campusblue-800">Candidates:</span>
+              <span className="px-2.5 py-1 bg-white border border-campusblue-100 rounded-full text-xs font-bold text-campusblue-900">
                 Total: {candidates.length}
               </span>
-              <span className="px-2.5 py-1 bg-emerald-50 border border-emerald-200 rounded-full text-xs font-bold text-emerald-700">
+              <span className="px-2.5 py-1 bg-campusblue-50 border border-campusblue-100 rounded-full text-xs font-bold text-campusblue-800">
                 Eligible: {eligibleCount}
               </span>
-              <span className="px-2.5 py-1 bg-purple-50 border border-purple-200 rounded-full text-xs font-bold text-purple-700">
+              <span className="px-2.5 py-1 bg-campusblue-50 border border-campusblue-100 rounded-full text-xs font-bold text-campusblue-800">
                 Shortlisted: {shortlistedCount}
               </span>
             </div>
@@ -174,14 +174,14 @@ export const CandidateManagementModal: React.FC<CandidateManagementModalProps> =
 
           {/* Bulk evaluation feedback alert */}
           {evaluationSummary && (
-            <div className="p-3.5 bg-blue-50 border border-blue-200 rounded-xl text-xs text-blue-900 space-y-1">
+            <div className="p-3.5 bg-campusblue-50 border border-campusblue-100 rounded-xl text-xs text-campusblue-900 space-y-1">
               <div className="font-bold flex items-center justify-between">
                 <span>Evaluation Complete:</span>
-                <span className="text-2xs font-normal text-blue-600">
+                <span className="text-2xs font-normal text-campusblue-700">
                   {evaluationSummary.eligible} Eligible / {evaluationSummary.ineligible} Ineligible
                 </span>
               </div>
-              <p className="text-2xs text-blue-700">
+              <p className="text-2xs text-campusblue-800">
                 Evaluated {evaluationSummary.total} candidate(s) against linked job rules.
                 {Object.keys(evaluationSummary.breakdown).length > 0 && (
                   <span className="block mt-1 font-semibold">
@@ -200,8 +200,8 @@ export const CandidateManagementModal: React.FC<CandidateManagementModalProps> =
                 onClick={() => setFilter("ALL")}
                 className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
                   filter === "ALL"
-                    ? "bg-blue-600 text-white"
-                    : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                    ? "bg-campusblue-700 text-white"
+                    : "bg-campusblue-50 text-campusblue-700 hover:bg-campusblue-100"
                 }`}
               >
                 All ({candidates.length})
@@ -211,8 +211,8 @@ export const CandidateManagementModal: React.FC<CandidateManagementModalProps> =
                 onClick={() => setFilter("ELIGIBLE")}
                 className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
                   filter === "ELIGIBLE"
-                    ? "bg-emerald-600 text-white"
-                    : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                    ? "bg-campusblue-700 text-white"
+                    : "bg-campusblue-50 text-campusblue-700 hover:bg-campusblue-100"
                 }`}
               >
                 Eligible ({eligibleCount})
@@ -222,8 +222,8 @@ export const CandidateManagementModal: React.FC<CandidateManagementModalProps> =
                 onClick={() => setFilter("SHORTLISTED")}
                 className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
                   filter === "SHORTLISTED"
-                    ? "bg-purple-600 text-white"
-                    : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                    ? "bg-campusblue-700 text-white"
+                    : "bg-campusblue-50 text-campusblue-700 hover:bg-campusblue-100"
                 }`}
               >
                 Shortlisted ({shortlistedCount})
@@ -236,7 +236,7 @@ export const CandidateManagementModal: React.FC<CandidateManagementModalProps> =
                 placeholder="Search candidate name, ID, branch..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full sm:w-64 px-3 py-1.5 text-xs rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full sm:w-64 px-3 py-1.5 text-xs rounded-lg border border-campusblue-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-campusblue-500"
               />
             </div>
           </div>
@@ -245,7 +245,7 @@ export const CandidateManagementModal: React.FC<CandidateManagementModalProps> =
           {loading ? (
             <LoadingState message="Loading registered candidates..." />
           ) : error ? (
-            <div className="p-4 bg-rose-50 border border-rose-200 text-rose-700 text-xs rounded-lg">
+            <div className="p-4 bg-campusblue-50 border border-campusblue-100 text-campusblue-800 text-xs rounded-lg">
               {error}
             </div>
           ) : filteredCandidates.length === 0 ? (
@@ -258,10 +258,10 @@ export const CandidateManagementModal: React.FC<CandidateManagementModalProps> =
               }
             />
           ) : (
-            <div className="overflow-x-auto border border-gray-200 rounded-xl">
+            <div className="overflow-x-auto border border-campusblue-100 rounded-xl">
               <table className="w-full text-left text-xs border-collapse">
                 <thead>
-                  <tr className="bg-gray-50 border-b border-gray-200 text-gray-600 font-semibold uppercase text-2xs tracking-wider">
+                  <tr className="bg-campusblue-50 border-b border-campusblue-100 text-campusblue-700 font-semibold uppercase text-2xs tracking-wider">
                     <th className="p-3">Candidate</th>
                     <th className="p-3">Dept & CGPA</th>
                     <th className="p-3">Eligibility</th>
@@ -271,48 +271,48 @@ export const CandidateManagementModal: React.FC<CandidateManagementModalProps> =
                 </thead>
                 <tbody className="divide-y divide-gray-200">
                   {filteredCandidates.map((c) => (
-                    <tr key={c.id} className="hover:bg-gray-50/70 transition-colors">
+                    <tr key={c.id} className="hover:bg-campusblue-50/70 transition-colors">
                       <td className="p-3">
-                        <div className="font-bold text-gray-900">{c.student_name}</div>
-                        <div className="text-2xs font-mono text-gray-500">
+                        <div className="font-bold text-campusblue-900">{c.student_name}</div>
+                        <div className="text-2xs font-mono text-campusblue-500">
                           {c.student_identifier}
                         </div>
                         {c.email && (
-                          <div className="text-2xs text-gray-400">{c.email}</div>
+                          <div className="text-2xs text-campusblue-300">{c.email}</div>
                         )}
                       </td>
                       <td className="p-3">
-                        <div className="font-medium text-gray-800">{c.branch}</div>
-                        <div className="text-2xs text-blue-600 font-bold">
+                        <div className="font-medium text-campusblue-900">{c.branch}</div>
+                        <div className="text-2xs text-campusblue-700 font-bold">
                           CGPA: {c.cgpa} / 10.0
                         </div>
                         {c.graduation_year && (
-                          <div className="text-2xs text-gray-400">
+                          <div className="text-2xs text-campusblue-300">
                             Class of {c.graduation_year}
                           </div>
                         )}
                       </td>
                       <td className="p-3">
                         {c.eligibility_status ? (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-2xs font-bold bg-emerald-100 text-emerald-800">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-2xs font-bold bg-campusblue-50 text-campusblue-900">
                             ✓ Eligible
                           </span>
                         ) : (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-2xs font-bold bg-rose-100 text-rose-800">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-2xs font-bold bg-campusblue-50 text-campusblue-900">
                             ✗ Ineligible
                           </span>
                         )}
-                        <div className="text-2xs text-gray-400 mt-0.5">
+                        <div className="text-2xs text-campusblue-300 mt-0.5">
                           Status: {c.registration_status}
                         </div>
                       </td>
                       <td className="p-3">
                         {c.shortlist_status ? (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-2xs font-bold bg-purple-100 text-purple-800">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-2xs font-bold bg-campusblue-50 text-campusblue-900">
                             ★ Shortlisted
                           </span>
                         ) : (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-2xs font-medium bg-gray-100 text-gray-600">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-2xs font-medium bg-campusblue-50 text-campusblue-700">
                             Under Review
                           </span>
                         )}
@@ -331,7 +331,7 @@ export const CandidateManagementModal: React.FC<CandidateManagementModalProps> =
                             <Button
                               variant="outline"
                               size="sm"
-                              className="text-2xs h-7 px-2 text-rose-600 hover:text-rose-700 hover:bg-rose-50"
+                              className="text-2xs h-7 px-2 text-campusblue-700 hover:text-campusblue-800 hover:bg-campusblue-50"
                               loading={updatingCandidateId === c.id}
                               onClick={() => handleUpdateStatus(c.id, false)}
                             >
@@ -341,7 +341,7 @@ export const CandidateManagementModal: React.FC<CandidateManagementModalProps> =
                             <Button
                               variant="primary"
                               size="sm"
-                              className="text-2xs h-7 px-2 bg-purple-600 hover:bg-purple-700 text-white"
+                              className="text-2xs h-7 px-2 bg-campusblue-700 hover:bg-campusblue-800 text-white"
                               loading={updatingCandidateId === c.id}
                               onClick={() => handleUpdateStatus(c.id, true)}
                             >
@@ -368,3 +368,7 @@ export const CandidateManagementModal: React.FC<CandidateManagementModalProps> =
     </>
   );
 };
+
+
+
+

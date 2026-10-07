@@ -293,7 +293,7 @@ export const DriveModal: React.FC<DriveModalProps> = ({
           </FormField>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-gray-100">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-campusblue-50">
           <FormField label="Registration Start (Optional)">
             <Input
               type="datetime-local"
@@ -315,7 +315,7 @@ export const DriveModal: React.FC<DriveModalProps> = ({
           </FormField>
         </div>
 
-        <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
+        <div className="flex justify-end gap-3 pt-4 border-t border-campusblue-50">
           <Button type="button" variant="outline" onClick={onClose} disabled={loading}>
             Cancel
           </Button>
@@ -327,3 +327,6 @@ export const DriveModal: React.FC<DriveModalProps> = ({
     </Modal>
   );
 };
+
+
+

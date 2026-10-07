@@ -44,6 +44,5 @@ backend/uploads/
 *.log
 
 # Laravel
-backend-laravel/.env
-backend-laravel/.env.*
+backend-laravel/.env*
 !backend-laravel/.env.example

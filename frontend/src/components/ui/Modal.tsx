@@ -58,20 +58,20 @@ export const Modal: React.FC<ModalProps> = ({
         aria-hidden="true"
       />
       <div
-        className={`relative w-full ${sizeStyles[size]} bg-white rounded-xl shadow-2xl border border-gray-200 flex flex-col max-h-[90vh] overflow-hidden z-10`}
+        className={`relative w-full ${sizeStyles[size]} bg-white rounded-lg shadow-xl border border-campusblue-100 font-serif flex flex-col max-h-[90vh] overflow-hidden z-10`}
         role="dialog"
         aria-modal="true"
       >
         {/* Header */}
-        <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-white shrink-0">
+        <div className="px-6 py-4 border-b border-campusblue-50 flex items-center justify-between bg-white shrink-0">
           <div>
-            <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
-            {subtitle && <p className="text-xs text-gray-500 mt-0.5">{subtitle}</p>}
+            <h3 className="text-lg font-semibold text-campusblue-900">{title}</h3>
+            {subtitle && <p className="text-xs text-campusblue-500 mt-0.5">{subtitle}</p>}
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 p-1.5 rounded-lg hover:bg-gray-100 transition cursor-pointer"
+            className="text-campusblue-300 hover:text-campusblue-700 p-1.5 rounded-lg hover:bg-campusblue-50 transition cursor-pointer"
             aria-label="Close modal"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -85,7 +85,7 @@ export const Modal: React.FC<ModalProps> = ({
 
         {/* Footer */}
         {footer && (
-          <div className="px-6 py-3.5 bg-gray-50 border-t border-gray-100 flex justify-end gap-3 shrink-0">
+          <div className="px-6 py-3.5 bg-campusblue-50/50 border-t border-campusblue-50 flex justify-end gap-3 shrink-0">
             {footer}
           </div>
         )}
@@ -93,3 +93,8 @@ export const Modal: React.FC<ModalProps> = ({
     </div>
   );
 };
+
+
+
+
+

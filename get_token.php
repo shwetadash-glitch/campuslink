@@ -1,0 +1,1 @@
+<?php require __DIR__.'/backend-laravel/vendor/autoload.php'; $app = require_once __DIR__.'/backend-laravel/bootstrap/app.php'; $app->make(\Illuminate\Contracts\Console\Kernel::class)->bootstrap(); echo \App\Models\User::where('role','STUDENT')->first()->createToken('test')->plainTextToken;

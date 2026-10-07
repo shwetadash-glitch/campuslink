@@ -158,30 +158,30 @@ export const JobRequirementsModal: React.FC<JobRequirementsModalProps> = ({
 
         {/* Existing requirements list */}
         <div>
-          <h4 className="text-xs font-bold uppercase tracking-wider text-gray-700 mb-2">
+          <h4 className="text-xs font-bold uppercase tracking-wider text-campusblue-800 mb-2">
             Active Skill Requirements ({requirements.length})
           </h4>
 
           {loadingList ? (
-            <p className="text-xs text-gray-500 py-4 text-center">Loading requirements...</p>
+            <p className="text-xs text-campusblue-500 py-4 text-center">Loading requirements...</p>
           ) : requirements.length > 0 ? (
-            <div className="divide-y divide-gray-100 border border-gray-200 rounded-lg overflow-hidden">
+            <div className="divide-y divide-gray-100 border border-campusblue-100 rounded-lg overflow-hidden">
               {requirements.map((r) => (
                 <div key={r.id} className="p-3 bg-white flex items-center justify-between gap-3 text-xs">
                   <div className="flex items-center gap-2">
-                    <span className="font-semibold text-gray-900">{r.skill_name || getSkillName(r.skill_id)}</span>
+                    <span className="font-semibold text-campusblue-900">{r.skill_name || getSkillName(r.skill_id)}</span>
                     <StatusBadge status={r.required_proficiency} size="sm" />
                     {r.is_mandatory ? (
-                      <span className="px-2 py-0.5 rounded-full text-2xs font-bold bg-rose-50 text-rose-700 border border-rose-200">
+                      <span className="px-2 py-0.5 rounded-full text-2xs font-bold bg-campusblue-50 text-campusblue-800 border border-campusblue-100">
                         Mandatory
                       </span>
                     ) : (
-                      <span className="px-2 py-0.5 rounded-full text-2xs font-semibold bg-gray-100 text-gray-600">
+                      <span className="px-2 py-0.5 rounded-full text-2xs font-semibold bg-campusblue-50 text-campusblue-700">
                         Preferred
                       </span>
                     )}
-                    <span className="text-gray-500">Weight: {r.weight}x</span>
-                    <span className="text-gray-500">{r.minimum_experience} mo exp</span>
+                    <span className="text-campusblue-500">Weight: {r.weight}x</span>
+                    <span className="text-campusblue-500">{r.minimum_experience} mo exp</span>
                   </div>
 
                   <Button
@@ -189,7 +189,7 @@ export const JobRequirementsModal: React.FC<JobRequirementsModalProps> = ({
                     size="sm"
                     loading={deletingId === r.id}
                     onClick={() => handleDeleteRequirement(r.id)}
-                    className="text-rose-600 hover:text-rose-700 hover:bg-rose-50"
+                    className="text-campusblue-700 hover:text-campusblue-800 hover:bg-campusblue-50"
                   >
                     Remove
                   </Button>
@@ -205,8 +205,8 @@ export const JobRequirementsModal: React.FC<JobRequirementsModalProps> = ({
         </div>
 
         {/* Add new requirement form */}
-        <div className="bg-gray-50 p-4 rounded-xl border border-gray-200">
-          <h4 className="text-xs font-bold uppercase tracking-wider text-gray-800 mb-3">
+        <div className="bg-campusblue-50 p-4 rounded-xl border border-campusblue-100">
+          <h4 className="text-xs font-bold uppercase tracking-wider text-campusblue-900 mb-3">
             Add New Requirement
           </h4>
 
@@ -290,7 +290,7 @@ export const JobRequirementsModal: React.FC<JobRequirementsModalProps> = ({
           </form>
         </div>
 
-        <div className="flex justify-end pt-3 border-t border-gray-100">
+        <div className="flex justify-end pt-3 border-t border-campusblue-50">
           <Button variant="outline" size="sm" onClick={onClose}>
             Done
           </Button>
@@ -299,3 +299,7 @@ export const JobRequirementsModal: React.FC<JobRequirementsModalProps> = ({
     </Modal>
   );
 };
+
+
+
+

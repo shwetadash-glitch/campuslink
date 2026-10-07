@@ -119,6 +119,7 @@ async function request<T>(
       headers,
     });
   } catch (err: any) {
+    if (err.name === "AbortError") throw err;
     throw new ApiError(
       err?.message || "Network error: Unable to connect to server.",
       0
@@ -150,8 +151,7 @@ async function request<T>(
 }
 
 export const apiClient = {
-  get: <T>(endpoint: string, headers?: Record<string, string>) =>
-    request<T>(endpoint, { method: "GET", headers }),
+  get: <T>(endpoint: string, options: RequestInit = {}) => request<T>(endpoint, { method: "GET", ...options }),
 
   post: <T>(endpoint: string, body?: any, headers?: Record<string, string>) =>
     request<T>(endpoint, {
@@ -190,3 +190,5 @@ export const apiClient = {
     });
   },
 };
+
+

@@ -294,9 +294,9 @@ export const JobModal: React.FC<JobModalProps> = ({
         </div>
 
         {/* Eligibility Criteria Sub-section */}
-        <div className="pt-3 border-t border-gray-100">
-          <h4 className="text-xs font-bold uppercase tracking-wider text-gray-700 mb-3 flex items-center gap-1.5">
-            <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div className="pt-3 border-t border-campusblue-50">
+          <h4 className="text-xs font-bold uppercase tracking-wider text-campusblue-800 mb-3 flex items-center gap-1.5">
+            <svg className="w-4 h-4 text-campusblue-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
             Eligibility Engine Rules
@@ -353,7 +353,7 @@ export const JobModal: React.FC<JobModalProps> = ({
           </div>
         </div>
 
-        <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
+        <div className="flex justify-end gap-3 pt-4 border-t border-campusblue-50">
           <Button type="button" variant="outline" onClick={onClose} disabled={loading}>
             Cancel
           </Button>
@@ -365,3 +365,6 @@ export const JobModal: React.FC<JobModalProps> = ({
     </Modal>
   );
 };
+
+
+

@@ -13,7 +13,8 @@ class StudentCertificationController extends Controller {
             'issuing_org' => 'required|string|min:1|max:200', 
             'issue_date' => 'nullable|date', 
             'expiry_date' => 'nullable|date',
-            'credential_id' => 'nullable|string|max:100'
+            'credential_id' => 'nullable|string|max:100',
+            'proof_file' => 'nullable|file|mimes:pdf|max:10240'
         ]);
         
         if (isset($validated['issue_date']) && isset($validated['expiry_date'])) {
@@ -22,8 +23,16 @@ class StudentCertificationController extends Controller {
             }
         }
         
-        $cert = $request->user()->studentProfile->certifications()->create($validated);
-        return response()->json($cert, 200); // Wait, if I want to strictly match FastAPI it might be 200, but 201 is fine too. Let's return 200 for exact parity if tested. I'll return 200 just in case.
+        $data = $validated;
+        unset($data['proof_file']);
+        
+        if ($request->hasFile('proof_file')) {
+            $path = $request->file('proof_file')->store('certificates', 'public');
+            $data['proof_path'] = '/storage/' . $path;
+        }
+        
+        $cert = $request->user()->studentProfile->certifications()->create($data);
+        return response()->json($cert, 200);
     }
     public function update(Request $request, $id) {
         $cert = $request->user()->studentProfile->certifications()->where('id', $id)->first();
@@ -34,7 +43,8 @@ class StudentCertificationController extends Controller {
             'issuing_org' => 'sometimes|string|min:1|max:200', 
             'issue_date' => 'nullable|date', 
             'expiry_date' => 'nullable|date',
-            'credential_id' => 'nullable|string|max:100'
+            'credential_id' => 'nullable|string|max:100',
+            'proof_file' => 'nullable|file|mimes:pdf|max:10240'
         ]);
         
         $newIssueDate = array_key_exists('issue_date', $validated) ? $validated['issue_date'] : $cert->issue_date;
@@ -46,7 +56,15 @@ class StudentCertificationController extends Controller {
             }
         }
         
-        $cert->update($validated);
+        $data = $validated;
+        unset($data['proof_file']);
+        
+        if ($request->hasFile('proof_file')) {
+            $path = $request->file('proof_file')->store('certificates', 'public');
+            $data['proof_path'] = '/storage/' . $path;
+        }
+        
+        $cert->update($data);
         return response()->json($cert);
     }
     public function destroy(Request $request, $id) {

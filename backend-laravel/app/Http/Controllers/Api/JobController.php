@@ -11,7 +11,7 @@ use App\Models\Student;
 
 class JobController extends Controller {
     public function index() { 
-        $jobs = Job::where('status', 'published')->orderBy('created_at', 'desc')->get();
+        $jobs = Job::where('status', 'PUBLISHED')->orderBy('created_at', 'desc')->get();
         return response()->json($jobs);
     }
     

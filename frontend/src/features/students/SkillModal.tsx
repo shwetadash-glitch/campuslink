@@ -159,7 +159,7 @@ export const SkillModal: React.FC<SkillModalProps> = ({
           />
         </FormField>
 
-        <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
+        <div className="flex justify-end gap-3 pt-4 border-t border-campusblue-50">
           <Button type="button" variant="outline" onClick={onClose} disabled={loading}>
             Cancel
           </Button>
@@ -171,3 +171,6 @@ export const SkillModal: React.FC<SkillModalProps> = ({
     </Modal>
   );
 };
+
+
+

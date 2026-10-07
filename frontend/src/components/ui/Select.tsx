@@ -18,10 +18,10 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
       <select
         ref={ref}
         disabled={disabled}
-        className={`w-full px-3 py-2 text-sm text-gray-900 bg-white border rounded-lg transition focus:outline-none focus:ring-2 disabled:bg-gray-100 disabled:text-gray-500 disabled:cursor-not-allowed ${
+        className={`w-full px-3 py-2 text-sm text-campusblue-900 bg-white border rounded-md transition focus:outline-none focus:ring-2 font-serif shadow-sm disabled:bg-campusblue-50 disabled:text-campusblue-500 disabled:cursor-not-allowed ${
           hasError
-            ? "border-rose-500 focus:ring-rose-500 focus:border-rose-500 text-rose-900 bg-rose-50/20"
-            : "border-gray-300 focus:ring-blue-500 focus:border-blue-500"
+            ? "border-campusblue-500 focus:ring-campusblue-500 focus:border-campusblue-500 text-campusblue-900 bg-campusblue-50/20"
+            : "border-campusblue-100 focus:ring-campusblue-200 focus:border-campusblue-300"
         } ${className}`}
         {...props}
       >
@@ -38,3 +38,9 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
 );
 
 Select.displayName = "Select";
+
+
+
+
+
+

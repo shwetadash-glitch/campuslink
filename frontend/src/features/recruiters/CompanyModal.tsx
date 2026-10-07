@@ -16,7 +16,7 @@ export interface CompanyModalProps {
   isOpen: boolean;
   onClose: () => void;
   company?: CompanyData | null;
-  onSuccess: () => void;
+  onSuccess: (data?: any) => void;
 }
 
 export const CompanyModal: React.FC<CompanyModalProps> = ({
@@ -95,7 +95,7 @@ export const CompanyModal: React.FC<CompanyModalProps> = ({
         headquarters: form.headquarters.trim() || undefined,
         description: form.description.trim() || undefined,
       });
-      onSuccess();
+      onSuccess({ name: form.name.trim(), industry: form.industry.trim() || undefined, size: form.size, website: form.website.trim() || undefined, headquarters: form.headquarters.trim() || undefined, description: form.description.trim() || undefined });
       onClose();
     } catch (err: any) {
       const parsed = parseApiError(err);
@@ -184,7 +184,7 @@ export const CompanyModal: React.FC<CompanyModalProps> = ({
           />
         </FormField>
 
-        <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
+        <div className="flex justify-end gap-3 pt-4 border-t border-campusblue-50">
           <Button type="button" variant="outline" onClick={onClose} disabled={loading}>
             Cancel
           </Button>
@@ -196,3 +196,6 @@ export const CompanyModal: React.FC<CompanyModalProps> = ({
     </Modal>
   );
 };
+
+
+

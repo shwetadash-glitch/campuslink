@@ -41,6 +41,7 @@ export interface OfficerStudentItem {
   cgpa: number;
   backlogs_current: number;
   backlogs_history: number;
+    readiness_score?: number;
   phone: string | null;
   email: string | null;
   skills_count: number;
@@ -69,7 +70,30 @@ export interface OfficerCompanyItem {
   drives_count: number;
 }
 
+
+export interface ShortlistCandidate {
+  student_id: number;
+  student_identifier: string;
+  student_name: string;
+  branch: string;
+  cgpa: string | null;
+  readiness_score: number;
+  is_eligible: boolean;
+  matched_skills: any[];
+  partial_skills: any[];
+  missing_skills: any[];
+  tier: "HIGHLY_EMPLOYABLE" | "QUALIFIED" | "NOT_READY";
+  justification: string;
+}
+
 export const adminApi = {
+  getAiShortlist: (driveId: number, params?: { limit?: number; offset?: number }, options?: RequestInit) => {
+    const q = new URLSearchParams();
+    if (params?.limit) q.append("limit", params.limit.toString());
+    if (params?.offset !== undefined) q.append("offset", params.offset.toString());
+    return apiClient.get<{ total: number; candidates: ShortlistCandidate[] }>(`/api/v1/officer/drives/${driveId}/ai-shortlist?${q.toString()}`, options);
+  },
+
   // Users
   getUsers: (params?: { query?: string; role?: string; limit?: number; offset?: number }) => {
     const q = new URLSearchParams();
@@ -149,3 +173,4 @@ export const adminApi = {
     description?: string;
   }) => apiClient.post<OfficerCompanyItem>("/api/v1/officer/companies", data),
 };
+

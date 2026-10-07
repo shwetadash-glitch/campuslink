@@ -33,6 +33,7 @@ export interface StudentCertificationItem {
   issue_date?: string | null;
   expiry_date?: string | null;
   credential_id?: string | null;
+  proof_path?: string | null;
 }
 
 export interface StudentAssessmentItem {

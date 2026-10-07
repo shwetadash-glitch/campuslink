@@ -18,7 +18,7 @@ export const Button: React.FC<ButtonProps> = ({
   ...props
 }) => {
   const baseStyles =
-    "inline-flex items-center justify-center font-medium rounded-lg transition focus:outline-none focus:ring-2 focus:ring-offset-1 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer";
+    "inline-flex items-center justify-center font-medium rounded-md shadow-sm font-serif font-semibold hover:-translate-y-px active:translate-y-0 transition focus:outline-none focus:ring-2 focus:ring-offset-1 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer";
 
   const sizeStyles = {
     sm: "px-3 py-1.5 text-xs",
@@ -27,11 +27,11 @@ export const Button: React.FC<ButtonProps> = ({
   };
 
   const variantStyles = {
-    primary: "bg-blue-600 text-white hover:bg-blue-700 focus:ring-blue-500 shadow-sm",
-    secondary: "bg-gray-100 text-gray-800 hover:bg-gray-200 focus:ring-gray-400 border border-gray-300",
-    danger: "bg-rose-600 text-white hover:bg-rose-700 focus:ring-rose-500 shadow-sm",
-    outline: "bg-transparent text-gray-700 hover:bg-gray-50 focus:ring-blue-500 border border-gray-300",
-    ghost: "bg-transparent text-gray-600 hover:bg-gray-100 focus:ring-gray-300",
+    primary: "bg-campusblue-700 text-white hover:bg-campusblue-800 focus:ring-campusblue-500 shadow-sm",
+    secondary: "bg-campusblue-100 text-campusblue-800 hover:bg-campusblue-200 focus:ring-campusblue-300",
+    danger: "bg-campusblue-900 text-white hover:bg-campusblue-950 focus:ring-campusblue-800 shadow-sm",
+    outline: "bg-white text-campusblue-700 border border-campusblue-500 hover:bg-campusblue-50 focus:ring-campusblue-300",
+    ghost: "bg-transparent text-campusblue-700 hover:bg-campusblue-50 focus:ring-campusblue-100",
   };
 
   return (
@@ -66,3 +66,8 @@ export const Button: React.FC<ButtonProps> = ({
     </button>
   );
 };
+
+
+
+
+

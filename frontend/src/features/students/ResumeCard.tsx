@@ -68,38 +68,38 @@ export const ResumeCard: React.FC<ResumeCardProps> = ({
     >
       <div className="space-y-4">
         {resumeUrl ? (
-          <div className="p-4 bg-emerald-50/60 border border-emerald-200 rounded-lg flex flex-wrap items-center justify-between gap-3">
+          <div className="p-4 bg-campusblue-50/60 border border-campusblue-100 rounded-lg flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-emerald-100 flex items-center justify-center text-emerald-700">
+              <div className="w-10 h-10 rounded-lg bg-campusblue-50 flex items-center justify-center text-campusblue-800">
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                 </svg>
               </div>
               <div>
-                <h4 className="text-sm font-semibold text-emerald-900">Resume Uploaded</h4>
+                <h4 className="text-sm font-semibold text-campusblue-900">Resume Uploaded</h4>
                 <a
                   href={`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8001"}${resumeUrl.replace("/api/v1", "")}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-xs text-emerald-700 hover:underline inline-flex items-center gap-1 mt-0.5"
+                  className="text-xs text-campusblue-800 hover:underline inline-flex items-center gap-1 mt-0.5"
                 >
                   <span>View Uploaded PDF</span>
                   <span>&nearr;</span>
                 </a>
               </div>
             </div>
-            <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800">
+            <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-campusblue-50 text-campusblue-900">
               Active
             </span>
           </div>
         ) : (
-          <div className="p-4 bg-amber-50/60 border border-amber-200 rounded-lg flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-amber-100 flex items-center justify-center text-amber-700 shrink-0">
+          <div className="p-4 bg-campusblue-50/60 border border-campusblue-100 rounded-lg flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg bg-campusblue-50 flex items-center justify-center text-campusblue-800 shrink-0">
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
               </svg>
             </div>
-            <p className="text-xs text-amber-800">
+            <p className="text-xs text-campusblue-900">
               No resume uploaded yet. Recruiters prioritize applicants with an active resume document.
             </p>
           </div>
@@ -107,7 +107,7 @@ export const ResumeCard: React.FC<ResumeCardProps> = ({
 
         {error && <FormError error={error} onDismiss={() => setError("")} />}
         {success && (
-          <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs rounded-lg">
+          <div className="p-3 bg-campusblue-50 border border-campusblue-100 text-campusblue-800 text-xs rounded-lg">
             {success}
           </div>
         )}
@@ -117,7 +117,7 @@ export const ResumeCard: React.FC<ResumeCardProps> = ({
             type="file"
             accept=".pdf,application/pdf"
             onChange={handleFileChange}
-            className="block w-full text-xs text-gray-500 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer"
+            className="block w-full text-xs text-campusblue-500 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-campusblue-50 file:text-campusblue-800 hover:file:bg-campusblue-50 cursor-pointer"
           />
           <Button
             size="sm"
@@ -133,3 +133,7 @@ export const ResumeCard: React.FC<ResumeCardProps> = ({
     </Card>
   );
 };
+
+
+
+

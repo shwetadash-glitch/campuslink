@@ -22,22 +22,27 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
   className = "",
 }) => {
   return (
-    <div className={`flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-6 border-b border-gray-200 mb-6 ${className}`}>
+    <div className={`flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-6 border-b border-campusblue-100 mb-6 ${className}`}>
       <div>
         {backHref && (
           <Link
             href={backHref}
-            className="inline-flex items-center text-xs font-semibold text-blue-600 hover:text-blue-800 mb-2 gap-1 group"
+            className="inline-flex items-center text-xs font-semibold text-campusblue-700 hover:text-campusblue-900 mb-2 gap-1 group"
           >
             <span className="transition-transform group-hover:-translate-x-0.5">&larr;</span>
             <span>{backLabel}</span>
           </Link>
         )}
-        <h1 className="text-2xl font-bold text-gray-900 tracking-tight">{title}</h1>
-        {subtitle && <p className="text-sm text-gray-500 mt-1">{subtitle}</p>}
+        <h1 className="text-3xl font-bold text-campusblue-900 tracking-tight font-serif">{title}</h1>
+        {subtitle && <p className="text-sm text-campusblue-500 mt-1 font-serif italic">{subtitle}</p>}
       </div>
 
       {actions && <div className="flex items-center gap-3 shrink-0">{actions}</div>}
     </div>
   );
 };
+
+
+
+
+

@@ -26,9 +26,9 @@ export const Toast: React.FC<ToastProps> = ({
   if (!message) return null;
 
   const typeStyles = {
-    success: "bg-emerald-600 text-white shadow-emerald-500/20",
-    error: "bg-rose-600 text-white shadow-rose-500/20",
-    info: "bg-blue-600 text-white shadow-blue-500/20",
+    success: "bg-campusblue-700 text-white shadow-campusblue-500/20",
+    error: "bg-campusblue-700 text-white shadow-campusblue-500/20",
+    info: "bg-campusblue-700 text-white shadow-blue-500/20",
   };
 
   return (
@@ -52,3 +52,6 @@ export const Toast: React.FC<ToastProps> = ({
     </div>
   );
 };
+
+
+

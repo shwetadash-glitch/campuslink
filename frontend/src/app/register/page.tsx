@@ -75,25 +75,25 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-50 p-4">
-      <div className="w-full max-w-md bg-white p-8 rounded-2xl shadow-xl border border-gray-200">
+    <div className="flex min-h-screen items-center justify-center bg-campusblue-50 bg-gradient-to-br from-campusblue-50 to-campusblue-50 p-4">
+      <div className="w-full max-w-md bg-white/80 backdrop-blur-sm p-8 rounded-xl shadow-lg border border-campusblue-100">
         <div className="text-center mb-6">
-          <span className="text-2xl font-black tracking-tight text-blue-600">
-            CAMPUS<span className="text-gray-900">LINK</span>
+          <span className="text-2xl font-black tracking-tight text-campusblue-700">
+            CAMPUS<span className="text-campusblue-900">LINK</span>
           </span>
-          <h2 className="text-xl font-bold mt-2 text-gray-800">Create an Account</h2>
-          <p className="text-xs text-gray-500 mt-0.5">
+          <h2 className="text-xl font-bold mt-2 text-campusblue-900">Create an Account</h2>
+          <p className="text-xs text-campusblue-500 mt-0.5">
             Join the campus placement and recruitment ecosystem
           </p>
         </div>
 
         {success ? (
-          <div className="p-4 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl text-center space-y-2">
+          <div className="p-4 bg-campusblue-50 border border-campusblue-100 text-campusblue-900 rounded-xl text-center space-y-2">
             <h4 className="font-bold text-sm">Registration Successful!</h4>
             <p className="text-xs">Your account has been created. Redirecting to login...</p>
             <Link
               href="/login"
-              className="inline-block text-xs font-semibold text-emerald-700 underline mt-2"
+              className="inline-block text-xs font-semibold text-campusblue-800 underline mt-2"
             >
               Click here to sign in immediately &rarr;
             </Link>
@@ -160,9 +160,9 @@ export default function RegisterPage() {
               </Button>
             </form>
 
-            <div className="mt-6 pt-6 border-t border-gray-100 text-center text-xs text-gray-500">
+            <div className="mt-6 pt-6 border-t border-campusblue-50 text-center text-xs text-campusblue-500">
               <span>Already have an account? </span>
-              <Link href="/login" className="font-semibold text-blue-600 hover:underline">
+              <Link href="/login" className="font-semibold text-campusblue-700 hover:underline">
                 Sign in
               </Link>
             </div>
@@ -172,3 +172,9 @@ export default function RegisterPage() {
     </div>
   );
 }
+
+
+
+
+
+

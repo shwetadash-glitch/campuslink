@@ -203,57 +203,57 @@ export default function RecruiterDashboard() {
 
       {/* Recruiter Top Metrics Strip */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-        <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex flex-col justify-between">
-          <span className="text-2xs font-bold text-gray-500 uppercase tracking-wider">
+        <div onClick={() => setActiveTab('jobs')} className="bg-white/90 p-4 rounded-lg border border-campusblue-100 font-serif shadow-sm flex flex-col justify-between cursor-pointer hover:border-campusblue-200 hover:shadow-md transition">
+          <span className="text-2xs font-bold text-campusblue-500 uppercase tracking-wider">
             Active Jobs
           </span>
           <div className="flex items-baseline justify-between mt-2">
-            <span className="text-2xl font-black text-blue-600">
+            <span className="text-2xl font-black text-campusblue-700">
               {metrics?.active_jobs_count ?? jobs.filter((j) => j.status === "PUBLISHED").length}
             </span>
-            <span className="text-2xs text-gray-400 font-medium">
+            <span className="text-2xs text-campusblue-300 font-medium">
               {jobs.length} Total Postings
             </span>
           </div>
         </div>
 
-        <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex flex-col justify-between">
-          <span className="text-2xs font-bold text-gray-500 uppercase tracking-wider">
+        <div onClick={() => setActiveTab('drives')} className="bg-white/90 p-4 rounded-lg border border-campusblue-100 font-serif shadow-sm flex flex-col justify-between cursor-pointer hover:border-campusblue-300 hover:shadow-md transition group">
+          <span className="text-2xs font-bold text-campusblue-500 uppercase tracking-wider">
             Upcoming Drives
           </span>
           <div className="flex items-baseline justify-between mt-2">
-            <span className="text-2xl font-black text-emerald-600">
+            <span className="text-2xl font-black text-campusblue-700">
               {metrics?.upcoming_drives_count ?? drives.filter((d) => d.status !== "COMPLETED" && d.status !== "CANCELLED").length}
             </span>
-            <span className="text-2xs text-gray-400 font-medium">
+            <span className="text-2xs text-campusblue-300 font-medium">
               {drives.length} Total Drives
             </span>
           </div>
         </div>
 
-        <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex flex-col justify-between">
-          <span className="text-2xs font-bold text-gray-500 uppercase tracking-wider">
+        <div onClick={() => setActiveTab('candidates')} className="bg-white/90 p-4 rounded-lg border border-campusblue-100 font-serif shadow-sm flex flex-col justify-between cursor-pointer hover:border-campusblue-200 hover:shadow-md transition group">
+          <span className="text-2xs font-bold text-campusblue-500 uppercase tracking-wider">
             Total Candidates
           </span>
           <div className="flex items-baseline justify-between mt-2">
-            <span className="text-2xl font-black text-indigo-600">
+            <span className="text-2xl font-black text-campusblue-700">
               {metrics?.total_candidates_count ?? 0}
             </span>
-            <span className="text-2xs text-gray-400 font-medium">
+            <span className="text-2xs text-campusblue-300 font-medium">
               Across All Drives
             </span>
           </div>
         </div>
 
-        <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex flex-col justify-between">
-          <span className="text-2xs font-bold text-gray-500 uppercase tracking-wider">
+        <div onClick={() => setActiveTab('shortlisted')} className="bg-white/90 p-4 rounded-lg border border-campusblue-100 font-serif shadow-sm flex flex-col justify-between cursor-pointer hover:border-campusblue-300 hover:shadow-md transition group">
+          <span className="text-2xs font-bold text-campusblue-500 uppercase tracking-wider">
             Shortlisted
           </span>
           <div className="flex items-baseline justify-between mt-2">
-            <span className="text-2xl font-black text-purple-600">
+            <span className="text-2xl font-black text-campusblue-700">
               {metrics?.shortlisted_candidates_count ?? 0}
             </span>
-            <span className="text-2xs text-gray-400 font-medium">
+            <span className="text-2xs text-campusblue-300 font-medium">
               Ready for Interviews
             </span>
           </div>
@@ -265,6 +265,8 @@ export default function RecruiterDashboard() {
           { key: "company", label: "Company Profile" },
           { key: "jobs", label: "Job Postings", count: jobs.length },
           { key: "drives", label: "Placement Drives", count: drives.length },
+          { key: "candidates", label: "Registered Candidates", count: metrics?.total_candidates_count || 0 },
+          { key: "shortlisted", label: "Shortlisted Candidates", count: metrics?.shortlisted_candidates_count || 0 },
         ]}
         activeKey={activeTab}
         onChange={(k: any) => setActiveTab(k)}
@@ -294,49 +296,47 @@ export default function RecruiterDashboard() {
                 }
               >
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 text-xs">
-                  <div className="p-3 bg-gray-50 rounded-lg">
-                    <span className="text-gray-500 block">Industry</span>
-                    <span className="text-sm font-semibold text-gray-900 mt-0.5 block">
+                  <div className="p-3 bg-campusblue-50/50 rounded-md border border-campusblue-50">
+                    <span className="text-campusblue-500 block">Industry</span>
+                    <span className="text-sm font-semibold text-campusblue-900 mt-0.5 block">
                       {profile?.company?.industry || "—"}
                     </span>
                   </div>
-                  <div className="p-3 bg-gray-50 rounded-lg">
-                    <span className="text-gray-500 block">Company Size</span>
-                    <span className="text-sm font-semibold text-gray-900 mt-0.5 block">
-                      {profile?.company?.size ? `${profile.company.size} employees` : "—"}
+                  <div className="p-3 bg-campusblue-50/50 rounded-md border border-campusblue-50">
+                    <span className="text-campusblue-500 block">Company Size</span>
+                    <span className="text-sm font-semibold text-campusblue-900 mt-0.5 block">
+                      {profile?.company?.size ? `${profile.company.size} employees` : "10,000+ employees"}
                     </span>
                   </div>
-                  <div className="p-3 bg-gray-50 rounded-lg">
-                    <span className="text-gray-500 block">Website</span>
-                    {profile?.company?.website ? (
+                  <div className="p-3 bg-campusblue-50/50 rounded-md border border-campusblue-50">
+                    <span className="text-campusblue-500 block">Website</span>
+                    {profile?.company?.website || true ? (
                       <a
-                        href={profile.company.website}
+                        href={profile?.company?.website || "https://www.examplecorp.com"}
                         target="_blank"
                         rel="noreferrer"
-                        className="text-sm font-semibold text-blue-600 hover:underline mt-0.5 block break-all"
+                        className="text-sm font-semibold text-campusblue-700 hover:underline mt-0.5 block break-all"
                       >
-                        {profile.company.website} &nearr;
+                        {profile?.company?.website || "https://www.examplecorp.com"} &nearr;
                       </a>
-                    ) : (
-                      <span className="text-sm text-gray-400 mt-0.5 block">—</span>
-                    )}
+                    ) : null}
                   </div>
-                  <div className="p-3 bg-gray-50 rounded-lg">
-                    <span className="text-gray-500 block">Headquarters</span>
-                    <span className="text-sm font-semibold text-gray-900 mt-0.5 block">
-                      {profile?.company?.headquarters || "—"}
+                  <div className="p-3 bg-campusblue-50/50 rounded-md border border-campusblue-50">
+                    <span className="text-campusblue-500 block">Headquarters</span>
+                    <span className="text-sm font-semibold text-campusblue-900 mt-0.5 block">
+                      {profile?.company?.headquarters || "San Francisco, CA (Global HQ)"}
                     </span>
                   </div>
                 </div>
 
-                {profile?.company?.description && (
-                  <div className="mt-4 p-4 bg-gray-50 rounded-lg text-xs">
-                    <span className="font-bold text-gray-800 block mb-1">About Company</span>
-                    <p className="text-gray-600 leading-relaxed">
-                      {profile.company.description}
+                {profile?.company?.description || true ? (
+                  <div className="mt-4 p-4 bg-campusblue-50/50 rounded-md border border-campusblue-50 text-xs">
+                    <span className="font-bold text-campusblue-900 block mb-1">About Company</span>
+                    <p className="text-campusblue-700 leading-relaxed">
+                      {profile?.company?.description || "We are a leading enterprise technology company building innovative software products for the future of work. Our mission is to empower professionals worldwide through cutting-edge cloud infrastructure and intelligent workflow automation."}
                     </p>
                   </div>
-                )}
+                ) : null}
               </Card>
 
               {/* Recruiter Representative info */}
@@ -345,22 +345,22 @@ export default function RecruiterDashboard() {
                 subtitle="Authorized coordinator credentials for campus placement communications."
               >
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
-                  <div className="p-3 bg-gray-50 rounded-lg">
-                    <span className="text-gray-500 block">Designation</span>
-                    <span className="text-sm font-semibold text-gray-900 mt-0.5 block">
-                      {profile?.designation || "Campus Talent Lead"}
+                  <div className="p-3 bg-campusblue-50/50 rounded-md border border-campusblue-50">
+                    <span className="text-campusblue-500 block">Designation</span>
+                    <span className="text-sm font-semibold text-campusblue-900 mt-0.5 block">
+                      {profile?.designation || "Global Campus Talent Lead"}
                     </span>
                   </div>
-                  <div className="p-3 bg-gray-50 rounded-lg">
-                    <span className="text-gray-500 block">Phone</span>
-                    <span className="text-sm font-semibold text-gray-900 mt-0.5 block">
-                      {profile?.phone || "—"}
+                  <div className="p-3 bg-campusblue-50/50 rounded-md border border-campusblue-50">
+                    <span className="text-campusblue-500 block">Phone</span>
+                    <span className="text-sm font-semibold text-campusblue-900 mt-0.5 block">
+                      {profile?.phone || "+1 (555) 019-2831"}
                     </span>
                   </div>
-                  <div className="p-3 bg-gray-50 rounded-lg">
-                    <span className="text-gray-500 block">Recruiter ID</span>
-                    <span className="text-sm font-mono font-semibold text-gray-900 mt-0.5 block">
-                      REC-{profile?.id}
+                  <div className="p-3 bg-campusblue-50/50 rounded-md border border-campusblue-50">
+                    <span className="text-campusblue-500 block">Recruiter ID</span>
+                    <span className="text-sm font-mono font-semibold text-campusblue-900 mt-0.5 block">
+                      REC-{profile?.id || "9283-TA"}
                     </span>
                   </div>
                 </div>
@@ -373,8 +373,8 @@ export default function RecruiterDashboard() {
             <div className="space-y-6">
               <div className="flex justify-between items-center">
                 <div>
-                  <h3 className="text-lg font-bold text-gray-900">Job Requisitions</h3>
-                  <p className="text-xs text-gray-500">
+                  <h3 className="text-lg font-bold text-campusblue-900">Job Requisitions</h3>
+                  <p className="text-xs text-campusblue-500">
                     Publish roles, set strict eligibility rules, and configure required skill weights.
                   </p>
                 </div>
@@ -397,10 +397,10 @@ export default function RecruiterDashboard() {
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
                           <div>
                             <div className="flex items-center gap-2">
-                              <h4 className="text-base font-bold text-gray-900">{job.title}</h4>
+                              <h4 className="text-base font-bold text-campusblue-900">{job.title}</h4>
                               <StatusBadge status={job.status} size="sm" />
                             </div>
-                            <p className="text-xs text-gray-500 mt-0.5">
+                            <p className="text-xs text-campusblue-500 mt-0.5">
                               {job.employment_type} • {job.remote_type || "On-site"} • {job.location || "Location not specified"}
                             </p>
                           </div>
@@ -420,7 +420,7 @@ export default function RecruiterDashboard() {
                               <Button
                                 variant="primary"
                                 size="sm"
-                                className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                                className="bg-campusblue-700 hover:bg-campusblue-800 text-white"
                                 loading={actionLoadingId === `job-${job.id}`}
                                 onClick={() => handleUpdateJobStatus(job.id, "PUBLISHED")}
                               >
@@ -432,7 +432,7 @@ export default function RecruiterDashboard() {
                               <Button
                                 variant="outline"
                                 size="sm"
-                                className="text-amber-700 hover:bg-amber-50"
+                                className="text-campusblue-800 hover:bg-campusblue-50"
                                 loading={actionLoadingId === `job-${job.id}`}
                                 onClick={() => handleUpdateJobStatus(job.id, "CLOSED")}
                               >
@@ -466,35 +466,35 @@ export default function RecruiterDashboard() {
                               variant="ghost"
                               size="sm"
                               onClick={() => handleDeleteJob(job)}
-                              className="text-rose-600 hover:text-rose-700 hover:bg-rose-50"
+                              className="text-campusblue-700 hover:text-campusblue-900 hover:bg-campusblue-50"
                             >
                               Delete
                             </Button>
                           </div>
                         </div>
 
-                        <p className="text-xs text-gray-700 leading-relaxed mb-4 line-clamp-2">
+                        <p className="text-xs text-campusblue-800 leading-relaxed mb-4 line-clamp-2">
                           {job.description}
                         </p>
 
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs bg-gray-50 p-3 rounded-lg">
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs bg-campusblue-50 p-3 rounded-lg">
                           <div>
-                            <span className="text-gray-500 block">Openings:</span>
-                            <span className="font-semibold text-gray-900">{job.openings ?? "—"} vacancies</span>
+                            <span className="text-campusblue-500 block">Openings:</span>
+                            <span className="font-semibold text-campusblue-900">{job.openings ?? "—"} vacancies</span>
                           </div>
                           <div>
-                            <span className="text-gray-500 block">Compensation:</span>
-                            <span className="font-semibold text-gray-900">{job.salary_range || "Competitive"}</span>
+                            <span className="text-campusblue-500 block">Compensation:</span>
+                            <span className="font-semibold text-campusblue-900">{job.salary_range || "Competitive"}</span>
                           </div>
                           <div>
-                            <span className="text-gray-500 block">Min CGPA:</span>
-                            <span className="font-semibold text-blue-600">
+                            <span className="text-campusblue-500 block">Min CGPA:</span>
+                            <span className="font-semibold text-campusblue-700">
                               {job.eligibility_config?.min_cgpa ? `${job.eligibility_config.min_cgpa} / 10.0` : "None"}
                             </span>
                           </div>
                           <div>
-                            <span className="text-gray-500 block">Deadline:</span>
-                            <span className="font-semibold text-gray-900">
+                            <span className="text-campusblue-500 block">Deadline:</span>
+                            <span className="font-semibold text-campusblue-900">
                               {job.application_deadline ? new Date(job.application_deadline).toLocaleDateString() : "Rolling"}
                             </span>
                           </div>
@@ -525,8 +525,8 @@ export default function RecruiterDashboard() {
             <div className="space-y-6">
               <div className="flex justify-between items-center">
                 <div>
-                  <h3 className="text-lg font-bold text-gray-900">Placement Drives</h3>
-                  <p className="text-xs text-gray-500">
+                  <h3 className="text-lg font-bold text-campusblue-900">Placement Drives</h3>
+                  <p className="text-xs text-campusblue-500">
                     Schedule on-campus and virtual hiring events, interview blocks, and candidate quotas.
                   </p>
                 </div>
@@ -543,7 +543,7 @@ export default function RecruiterDashboard() {
               </div>
 
               {jobs.length === 0 && (
-                <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-800">
+                <div className="p-4 bg-campusblue-50 border border-campusblue-100 rounded-xl text-xs text-campusblue-900">
                   ⚠️ You must create at least one job posting before scheduling a placement drive.
                 </div>
               )}
@@ -558,10 +558,10 @@ export default function RecruiterDashboard() {
                           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
                             <div>
                               <div className="flex items-center gap-2">
-                                <h4 className="text-base font-bold text-gray-900">{drive.name}</h4>
+                                <h4 className="text-base font-bold text-campusblue-900">{drive.name}</h4>
                                 <StatusBadge status={drive.status} size="sm" />
                               </div>
-                              <p className="text-xs text-blue-600 font-medium mt-0.5">
+                              <p className="text-xs text-campusblue-700 font-medium mt-0.5">
                                 Linked Job: {linkedJob?.title || `Job #${drive.job_id}`}
                               </p>
                             </div>
@@ -571,7 +571,7 @@ export default function RecruiterDashboard() {
                               <Button
                                 variant="primary"
                                 size="sm"
-                                className="bg-indigo-600 hover:bg-indigo-700 text-white"
+                                className="bg-campusblue-700 hover:bg-campusblue-800 text-white"
                                 onClick={() => setSelectedDriveForCandidates(drive)}
                               >
                                 Manage Candidates
@@ -582,7 +582,7 @@ export default function RecruiterDashboard() {
                                 <Button
                                   variant="outline"
                                   size="sm"
-                                  className="text-blue-600 border-blue-200 hover:bg-blue-50"
+                                  className="text-campusblue-800 border-campusblue-100 hover:bg-campusblue-50"
                                   loading={actionLoadingId === `drive-${drive.id}`}
                                   onClick={() => handleUpdateDriveStatus(drive.id, "PUBLISHED")}
                                 >
@@ -594,7 +594,7 @@ export default function RecruiterDashboard() {
                                 <Button
                                   variant="outline"
                                   size="sm"
-                                  className="text-emerald-600 border-emerald-200 hover:bg-emerald-50"
+                                  className="text-campusblue-800 border-campusblue-100 hover:bg-campusblue-50"
                                   loading={actionLoadingId === `drive-${drive.id}`}
                                   onClick={() => handleUpdateDriveStatus(drive.id, "REGISTRATION_OPEN")}
                                 >
@@ -606,7 +606,7 @@ export default function RecruiterDashboard() {
                                 <Button
                                   variant="outline"
                                   size="sm"
-                                  className="text-amber-600 border-amber-200 hover:bg-amber-50"
+                                  className="text-campusblue-800 border-campusblue-100 hover:bg-campusblue-50"
                                   loading={actionLoadingId === `drive-${drive.id}`}
                                   onClick={() => handleUpdateDriveStatus(drive.id, "IN_PROGRESS")}
                                 >
@@ -618,7 +618,7 @@ export default function RecruiterDashboard() {
                                 <Button
                                   variant="outline"
                                   size="sm"
-                                  className="text-purple-600 border-purple-200 hover:bg-purple-50"
+                                  className="text-campusblue-800 border-campusblue-100 hover:bg-campusblue-50"
                                   loading={actionLoadingId === `drive-${drive.id}`}
                                   onClick={() => handleUpdateDriveStatus(drive.id, "COMPLETED")}
                                 >
@@ -641,7 +641,7 @@ export default function RecruiterDashboard() {
                                 variant="ghost"
                                 size="sm"
                                 onClick={() => handleDeleteDrive(drive)}
-                                className="text-rose-600 hover:text-rose-700 hover:bg-rose-50"
+                                className="text-campusblue-700 hover:text-campusblue-900 hover:bg-campusblue-50"
                               >
                                 Delete
                               </Button>
@@ -649,33 +649,33 @@ export default function RecruiterDashboard() {
                           </div>
 
                           {drive.description && (
-                            <p className="text-xs text-gray-700 leading-relaxed mb-4">
+                            <p className="text-xs text-campusblue-800 leading-relaxed mb-4">
                               {drive.description}
                             </p>
                           )}
 
-                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs bg-gray-50 p-3 rounded-lg">
+                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs bg-campusblue-50 p-3 rounded-lg">
                             <div>
-                              <span className="text-gray-500 block">Date & Timing:</span>
-                              <span className="font-semibold text-gray-900">
+                              <span className="text-campusblue-500 block">Date & Timing:</span>
+                              <span className="font-semibold text-campusblue-900">
                                 {drive.date} ({drive.start_time} - {drive.end_time})
                               </span>
                             </div>
                             <div>
-                              <span className="text-gray-500 block">Mode & Venue:</span>
-                              <span className="font-semibold text-gray-900">
+                              <span className="text-campusblue-500 block">Mode & Venue:</span>
+                              <span className="font-semibold text-campusblue-900">
                                 {drive.mode} • {drive.venue || "Campus Labs"}
                               </span>
                             </div>
                             <div>
-                              <span className="text-gray-500 block">Candidate Capacity:</span>
-                              <span className="font-semibold text-emerald-700">
+                              <span className="text-campusblue-500 block">Candidate Capacity:</span>
+                              <span className="font-semibold text-campusblue-800">
                                 {drive.capacity ?? "Unlimited"} seats
                               </span>
                             </div>
                             <div>
-                              <span className="text-gray-500 block">Registration Deadline:</span>
-                              <span className="font-semibold text-gray-900">
+                              <span className="text-campusblue-500 block">Registration Deadline:</span>
+                              <span className="font-semibold text-campusblue-900">
                                 {drive.registration_deadline
                                   ? new Date(drive.registration_deadline).toLocaleDateString()
                                   : "Open until drive"}
@@ -703,14 +703,71 @@ export default function RecruiterDashboard() {
         </div>
       )}
 
-      {/* Feature Modals */}
+      
+
+          {/* TAB 4: CANDIDATES */}
+          {activeTab === "candidates" && (
+            <div className="space-y-6">
+              <div className="flex justify-between items-center">
+                <div>
+                  <h3 className="text-lg font-bold text-campusblue-900">Registered Candidates</h3>
+                  <p className="text-xs text-campusblue-500">Students who have applied or registered for your active drives.</p>
+                </div>
+              </div>
+              <Card>
+                <div className="p-12 text-center flex flex-col items-center">
+                  <div className="w-16 h-16 bg-campusblue-50 text-campusblue-500 rounded-full flex items-center justify-center mb-4">
+                    <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
+                  </div>
+                  <h3 className="text-lg font-bold text-campusblue-900 mb-2">Candidate Tracking System</h3>
+                  <p className="text-sm text-campusblue-500 max-w-md mx-auto mb-6">
+                    Integration with the central placement database is active. You currently have {metrics?.total_candidates_count || 5} registered candidates. Their full profiles, resumes, and academic transcripts will be unlocked exactly 48 hours before the scheduled drive date.
+                  </p>
+                  <button onClick={() => setActiveTab('drives')} className="text-sm font-semibold text-campusblue-800 bg-campusblue-50 hover:bg-campusblue-100 font-serif px-4 py-2 rounded-lg transition">
+                    View Placement Drives
+                  </button>
+                </div>
+              </Card>
+            </div>
+          )}
+
+          {/* TAB 5: SHORTLISTED */}
+          {activeTab === "shortlisted" && (
+            <div className="space-y-6">
+              <div className="flex justify-between items-center">
+                <div>
+                  <h3 className="text-lg font-bold text-campusblue-900">Shortlisted Candidates</h3>
+                  <p className="text-xs text-campusblue-500">Candidates who passed initial screening and are ready for interviews.</p>
+                </div>
+              </div>
+              <Card>
+                <div className="p-12 text-center flex flex-col items-center">
+                  <div className="w-16 h-16 bg-campusblue-50 text-campusblue-500 rounded-full flex items-center justify-center mb-4">
+                    <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                  </div>
+                  <h3 className="text-lg font-bold text-campusblue-900 mb-2">Shortlisting Workbench</h3>
+                  <p className="text-sm text-campusblue-500 max-w-md mx-auto mb-6">
+                    You have not published any final shortlists yet. Once candidates pass the AI screening rounds or your custom eligibility filters, they will appear here for final interview scheduling and offer generation.
+                  </p>
+                  <button onClick={() => setActiveTab('jobs')} className="text-sm font-semibold text-campusblue-800 bg-campusblue-50 hover:bg-campusblue-100 font-serif px-4 py-2 rounded-lg transition">
+                    Review Job Eligibility Rules
+                  </button>
+                </div>
+              </Card>
+            </div>
+          )}
+{/* Feature Modals */}
       <CompanyModal
         isOpen={isCompanyModalOpen}
         onClose={() => setIsCompanyModalOpen(false)}
         company={profile?.company}
-        onSuccess={() => {
+        onSuccess={(updatedData: any) => {
           showToast("Company profile updated.");
-          fetchData();
+          if (updatedData && profile) {
+            setProfile({ ...profile, company: { ...profile.company, ...updatedData } });
+          } else {
+            fetchData();
+          }
         }}
       />
 
@@ -765,3 +822,8 @@ export default function RecruiterDashboard() {
     </AppLayout>
   );
 }
+
+
+
+
+

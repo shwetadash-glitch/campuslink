@@ -15,7 +15,17 @@ import { Toast } from "@/components/feedback/Toast";
 import { FormError } from "@/components/forms/FormError";
 
 import { studentsApi } from "@/services/studentsApi";
-import { parseApiError } from "@/services/apiClient";
+import { parseApiError, apiClient } from "@/services/apiClient";
+import {
+  Radar,
+  RadarChart,
+  PolarGrid,
+  PolarAngleAxis,
+  PolarRadiusAxis,
+  ResponsiveContainer,
+  Tooltip,
+  Legend
+} from "recharts";
 
 export default function JobsPage() {
   const [activeTab, setActiveTab] = useState<"jobs" | "drives" | "my-drives">("jobs");
@@ -31,6 +41,7 @@ export default function JobsPage() {
   // Job Detail & Eligibility Modal
   const [selectedJob, setSelectedJob] = useState<any | null>(null);
   const [eligibilityData, setEligibilityData] = useState<any | null>(null);
+  const [skillGapsData, setSkillGapsData] = useState<any | null>(null);
   const [loadingEligibility, setLoadingEligibility] = useState(false);
 
   // Drive Registration state
@@ -67,10 +78,15 @@ export default function JobsPage() {
   const handleOpenJobDetails = async (job: any) => {
     setSelectedJob(job);
     setEligibilityData(null);
+    setSkillGapsData(null);
     setLoadingEligibility(true);
     try {
-      const data = await studentsApi.checkMyJobEligibility(job.id);
-      setEligibilityData(data);
+      const [eligData, gapsData] = await Promise.all([
+        studentsApi.checkMyJobEligibility(job.id),
+        apiClient.get(`/api/v1/readiness/me/jobs/${job.id}/skill-gaps`).catch(() => null)
+      ]);
+      setEligibilityData(eligData);
+      setSkillGapsData(gapsData);
     } catch (err: any) {
       console.error("Eligibility check error", err);
     } finally {
@@ -133,6 +149,73 @@ export default function JobsPage() {
     return myDrives.some((d) => d.drive_id === driveId && d.registration_status !== "WITHDRAWN");
   };
 
+  const renderSkillRadar = () => {
+    if (!skillGapsData || (!skillGapsData.matched_skills && !skillGapsData.missing_skills)) return null;
+
+    const allSkills = [
+      ...(skillGapsData.matched_skills || []),
+      ...(skillGapsData.partial_skills || []),
+      ...(skillGapsData.missing_skills || [])
+    ];
+
+    if (allSkills.length === 0) return null;
+
+    const profMap: Record<string, number> = {
+      "BEGINNER": 1,
+      "INTERMEDIATE": 2,
+      "ADVANCED": 3,
+      "EXPERT": 4
+    };
+
+    const chartData = allSkills.map(skill => ({
+      subject: skill.skill_name,
+      required: profMap[skill.required_proficiency] || 0,
+      student: profMap[skill.student_proficiency] || 0,
+      fullMark: 4
+    }));
+
+    return (
+      <div className="mt-6 mb-4">
+        <h4 className="text-xs font-bold uppercase tracking-wider text-campusblue-800 mb-2">
+          Skill Gap Analysis
+        </h4>
+        <p className="text-xs text-campusblue-700 mb-4">Compare your current skill level with this job's requirements.</p>
+        <div className="w-full h-[300px] bg-white border border-campusblue-50 rounded-xl p-4">
+          <ResponsiveContainer width="100%" height="100%">
+            <RadarChart cx="50%" cy="50%" outerRadius="70%" data={chartData}>
+              <PolarGrid stroke="#e5e7eb" />
+              <PolarAngleAxis dataKey="subject" tick={{ fill: '#374151', fontSize: 11 }} />
+              <PolarRadiusAxis angle={30} domain={[0, 4]} tick={{ fill: '#9ca3af', fontSize: 10 }} tickCount={5} />
+              <Radar
+                name="Job Requirement"
+                dataKey="required"
+                stroke="#64748b"
+                fill="#64748b"
+                fillOpacity={0.2}
+              />
+              <Radar
+                name="Your Level"
+                dataKey="student"
+                stroke="#3b82f6"
+                fill="#3b82f6"
+                fillOpacity={0.6}
+              />
+              <Tooltip 
+                contentStyle={{ borderRadius: '8px', border: '1px solid #e5e7eb', fontSize: '12px' }}
+                formatter={(value: any) => {
+                  if (typeof value !== 'number') return value;
+                  const labels = ["Missing", "Beginner", "Intermediate", "Advanced", "Expert"];
+                  return labels[value] || value;
+                }}
+              />
+              <Legend wrapperStyle={{ fontSize: '12px', marginTop: '10px' }} />
+            </RadarChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <AppLayout allowedRoles={["STUDENT", "SUPER_ADMIN", "PLACEMENT_OFFICER"]}>
       <PageHeader
@@ -167,58 +250,58 @@ export default function JobsPage() {
               {jobs.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {jobs.map((job) => (
-                    <Card key={job.id} padding="none" className="hover:border-blue-300 transition shadow-xs">
+                    <Card key={job.id} padding="none" className="hover:border-campusblue-200 transition shadow-xs">
                       <div className="p-6 flex flex-col h-full justify-between">
                         <div>
                           <div className="flex items-start justify-between gap-2 mb-2">
                             <div>
-                              <span className="text-2xs font-bold uppercase tracking-wider text-blue-600 block">
+                              <span className="text-2xs font-bold uppercase tracking-wider text-campusblue-700 block">
                                 {job.company_name}
                               </span>
-                              <h3 className="text-base font-bold text-gray-900 mt-0.5">{job.title}</h3>
+                              <h3 className="text-base font-bold text-campusblue-900 mt-0.5">{job.title}</h3>
                             </div>
                             <StatusBadge status={job.employment_type} size="sm" variant="info" />
                           </div>
 
-                          <p className="text-xs text-gray-600 line-clamp-3 mb-4 leading-relaxed">
+                          <p className="text-xs text-campusblue-700 line-clamp-3 mb-4 leading-relaxed">
                             {job.description}
                           </p>
 
-                          <div className="grid grid-cols-2 gap-2 text-xs bg-gray-50 p-3 rounded-lg mb-4">
+                          <div className="grid grid-cols-2 gap-2 text-xs bg-campusblue-50 p-3 rounded-lg mb-4">
                             <div>
-                              <span className="text-gray-400 block text-2xs">Location:</span>
-                              <span className="font-semibold text-gray-800">{job.location || "Flexible"}</span>
+                              <span className="text-campusblue-300 block text-2xs">Location:</span>
+                              <span className="font-semibold text-campusblue-900">{job.location || "Flexible"}</span>
                             </div>
                             <div>
-                              <span className="text-gray-400 block text-2xs">Work Mode:</span>
-                              <span className="font-semibold text-gray-800">{job.remote_type || "On-site"}</span>
+                              <span className="text-campusblue-300 block text-2xs">Work Mode:</span>
+                              <span className="font-semibold text-campusblue-900">{job.remote_type || "On-site"}</span>
                             </div>
                             <div>
-                              <span className="text-gray-400 block text-2xs">Compensation:</span>
-                              <span className="font-semibold text-emerald-700">{job.salary_range || "Competitive"}</span>
+                              <span className="text-campusblue-300 block text-2xs">Compensation:</span>
+                              <span className="font-semibold text-campusblue-800">{job.salary_range || "Competitive"}</span>
                             </div>
                             <div>
-                              <span className="text-gray-400 block text-2xs">Vacancies:</span>
-                              <span className="font-semibold text-gray-800">{job.openings ?? "—"} openings</span>
+                              <span className="text-campusblue-300 block text-2xs">Vacancies:</span>
+                              <span className="font-semibold text-campusblue-900">{job.openings ?? "—"} openings</span>
                             </div>
                           </div>
 
                           {job.requirements && job.requirements.length > 0 && (
                             <div className="mb-4">
-                              <span className="text-2xs font-bold uppercase tracking-wider text-gray-500 block mb-1.5">
+                              <span className="text-2xs font-bold uppercase tracking-wider text-campusblue-500 block mb-1.5">
                                 Required Skills
                               </span>
                               <div className="flex flex-wrap gap-1">
                                 {job.requirements.slice(0, 4).map((r: any) => (
                                   <span
                                     key={r.id}
-                                    className="px-2 py-0.5 rounded text-2xs font-medium bg-gray-100 text-gray-700"
+                                    className="px-2 py-0.5 rounded text-2xs font-medium bg-campusblue-50 text-campusblue-800"
                                   >
                                     {r.skill_name} ({r.required_proficiency})
                                   </span>
                                 ))}
                                 {job.requirements.length > 4 && (
-                                  <span className="px-2 py-0.5 rounded text-2xs text-gray-400">
+                                  <span className="px-2 py-0.5 rounded text-2xs text-campusblue-300">
                                     +{job.requirements.length - 4} more
                                   </span>
                                 )}
@@ -227,8 +310,8 @@ export default function JobsPage() {
                           )}
                         </div>
 
-                        <div className="pt-3 border-t border-gray-100 flex items-center justify-between">
-                          <span className="text-2xs text-gray-400">
+                        <div className="pt-3 border-t border-campusblue-50 flex items-center justify-between">
+                          <span className="text-2xs text-campusblue-300">
                             Deadline: {job.application_deadline ? new Date(job.application_deadline).toLocaleDateString() : "Rolling"}
                           </span>
                           <Button
@@ -271,21 +354,21 @@ export default function JobsPage() {
                           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
                             <div>
                               <div className="flex items-center gap-2">
-                                <h3 className="text-base font-bold text-gray-900">{drive.name}</h3>
+                                <h3 className="text-base font-bold text-campusblue-900">{drive.name}</h3>
                                 <StatusBadge status={drive.status} size="sm" />
                               </div>
-                              <p className="text-xs text-blue-600 font-medium mt-0.5">
+                              <p className="text-xs text-campusblue-700 font-medium mt-0.5">
                                 Company: {drive.company_name} {drive.job_title ? `• Job: ${drive.job_title}` : ""}
                               </p>
                             </div>
 
                             <div className="flex items-center gap-2 shrink-0">
                               {registered ? (
-                                <span className="px-3 py-1.5 rounded-lg text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                                <span className="px-3 py-1.5 rounded-lg text-xs font-bold bg-campusblue-50 text-campusblue-900 border border-campusblue-200">
                                   ✓ Registered
                                 </span>
                               ) : isDeadlinePassed ? (
-                                <span className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-gray-100 text-gray-500">
+                                <span className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-campusblue-50 text-campusblue-500">
                                   Registration Closed
                                 </span>
                               ) : (
@@ -301,33 +384,33 @@ export default function JobsPage() {
                           </div>
 
                           {drive.description && (
-                            <p className="text-xs text-gray-700 leading-relaxed mb-4">
+                            <p className="text-xs text-campusblue-800 leading-relaxed mb-4">
                               {drive.description}
                             </p>
                           )}
 
-                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs bg-gray-50 p-3 rounded-lg">
+                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs bg-campusblue-50 p-3 rounded-lg">
                             <div>
-                              <span className="text-gray-400 block text-2xs">Drive Date:</span>
-                              <span className="font-semibold text-gray-800">
+                              <span className="text-campusblue-300 block text-2xs">Drive Date:</span>
+                              <span className="font-semibold text-campusblue-900">
                                 {drive.date ? new Date(drive.date).toLocaleDateString() : "TBD"}
                               </span>
                             </div>
                             <div>
-                              <span className="text-gray-400 block text-2xs">Mode & Venue:</span>
-                              <span className="font-semibold text-gray-800">
+                              <span className="text-campusblue-300 block text-2xs">Mode & Venue:</span>
+                              <span className="font-semibold text-campusblue-900">
                                 {drive.mode} • {drive.venue || "Campus Labs"}
                               </span>
                             </div>
                             <div>
-                              <span className="text-gray-400 block text-2xs">Seats Available:</span>
-                              <span className="font-semibold text-emerald-700">
+                              <span className="text-campusblue-300 block text-2xs">Seats Available:</span>
+                              <span className="font-semibold text-campusblue-800">
                                 {drive.capacity ? `${drive.registered_count} / ${drive.capacity}` : "Open"}
                               </span>
                             </div>
                             <div>
-                              <span className="text-gray-400 block text-2xs">Registration Deadline:</span>
-                              <span className="font-semibold text-gray-800">
+                              <span className="text-campusblue-300 block text-2xs">Registration Deadline:</span>
+                              <span className="font-semibold text-campusblue-900">
                                 {drive.registration_deadline
                                   ? new Date(drive.registration_deadline).toLocaleDateString()
                                   : "Open"}
@@ -358,18 +441,18 @@ export default function JobsPage() {
                       <div className="p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                         <div>
                           <div className="flex items-center gap-2">
-                            <h3 className="text-base font-bold text-gray-900">{item.drive_name}</h3>
+                            <h3 className="text-base font-bold text-campusblue-900">{item.drive_name}</h3>
                             <StatusBadge status={item.registration_status} size="sm" />
                             {item.shortlist_status && (
-                              <span className="px-2 py-0.5 rounded-full text-2xs font-black bg-purple-100 text-purple-800 border border-purple-300">
+                              <span className="px-2 py-0.5 rounded-full text-2xs font-black bg-campusblue-50 text-campusblue-900 border border-campusblue-200">
                                 Shortlisted ⭐
                               </span>
                             )}
                           </div>
-                          <p className="text-xs text-gray-500 mt-1">
-                            {item.company_name} • Role: <strong className="text-gray-700">{item.job_title}</strong>
+                          <p className="text-xs text-campusblue-500 mt-1">
+                            {item.company_name} • Role: <strong className="text-campusblue-800">{item.job_title}</strong>
                           </p>
-                          <div className="flex items-center gap-4 text-xs text-gray-500 mt-2">
+                          <div className="flex items-center gap-4 text-xs text-campusblue-500 mt-2">
                             <span>Date: <strong>{item.date ? new Date(item.date).toLocaleDateString() : "TBD"}</strong></span>
                             <span>Venue: <strong>{item.venue || item.mode}</strong></span>
                             <span>Registered on: <strong>{item.registration_timestamp ? new Date(item.registration_timestamp).toLocaleDateString() : "—"}</strong></span>
@@ -378,7 +461,7 @@ export default function JobsPage() {
 
                         <div className="text-right shrink-0 flex flex-col items-end gap-2">
                           <div>
-                            <span className="text-2xs text-gray-400 block mb-1">Eligibility Status</span>
+                            <span className="text-2xs text-campusblue-300 block mb-1">Eligibility Status</span>
                             <StatusBadge
                               status={item.eligibility_status ? "ELIGIBLE" : "NOT_ELIGIBLE"}
                               size="md"
@@ -388,7 +471,7 @@ export default function JobsPage() {
                             <Button
                               variant="outline"
                               size="sm"
-                              className="text-rose-600 hover:text-rose-700 hover:bg-rose-50 border-rose-200 text-2xs h-7 px-2"
+                              className="text-campusblue-700 hover:text-campusblue-800 hover:bg-campusblue-50 border-campusblue-100 text-2xs h-7 px-2"
                               loading={withdrawingDriveId === item.drive_id}
                               onClick={() => handleWithdrawDrive(item.drive_id)}
                             >
@@ -429,7 +512,7 @@ export default function JobsPage() {
               <Button
                 variant="primary"
                 size="sm"
-                disabled={!eligibilityData?.eligible}
+                disabled={!eligibilityData?.is_eligible}
                 loading={applyingJobId === selectedJob.id}
                 onClick={() => handleDirectApply(selectedJob.id)}
               >
@@ -440,41 +523,41 @@ export default function JobsPage() {
         >
           <div className="space-y-6">
             {/* Live Eligibility Evaluation Box */}
-            <div className="p-4 rounded-xl border bg-gray-50">
-              <span className="text-2xs font-bold uppercase tracking-wider text-gray-500 block mb-2">
+            <div className="p-4 rounded-xl border bg-campusblue-50">
+              <span className="text-2xs font-bold uppercase tracking-wider text-campusblue-500 block mb-2">
                 Deterministic Eligibility Check
               </span>
 
               {loadingEligibility ? (
-                <p className="text-xs text-gray-500">Checking your profile against job eligibility rules...</p>
+                <p className="text-xs text-campusblue-500">Checking your profile against job eligibility rules...</p>
               ) : eligibilityData ? (
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <span className="text-xs font-semibold text-gray-700">Evaluation Result:</span>
+                      <span className="text-xs font-semibold text-campusblue-800">Evaluation Result:</span>
                       <StatusBadge
-                        status={eligibilityData.eligible ? "ELIGIBLE" : "NOT_ELIGIBLE"}
+                        status={eligibilityData.is_eligible ? "ELIGIBLE" : "NOT_ELIGIBLE"}
                         size="md"
                       />
                     </div>
-                    <span className="text-xs text-gray-500">
+                    <span className="text-xs text-campusblue-500">
                       Your CGPA: <strong>{eligibilityData.student_cgpa}</strong> | Backlogs: <strong>{eligibilityData.student_backlogs}</strong>
                     </span>
                   </div>
 
-                  {!eligibilityData.eligible && eligibilityData.reasons && eligibilityData.reasons.length > 0 && (
-                    <div className="p-3 bg-rose-50 border border-rose-200 rounded-lg text-xs text-rose-700">
+                  {!eligibilityData.is_eligible && eligibilityData.failed_criteria && eligibilityData.failed_criteria.length > 0 && (
+                    <div className="p-3 bg-campusblue-50 border border-campusblue-100 rounded-lg text-xs text-campusblue-800">
                       <strong className="block mb-1">You are currently ineligible for the following reason(s):</strong>
                       <ul className="list-disc pl-5 space-y-0.5">
-                        {eligibilityData.reasons.map((r: string, i: number) => (
+                        {eligibilityData.failed_criteria.map((r: string, i: number) => (
                           <li key={i}>{r}</li>
                         ))}
                       </ul>
                     </div>
                   )}
 
-                  {eligibilityData.eligible && (
-                    <p className="text-xs text-emerald-700 font-medium">
+                  {eligibilityData.is_eligible && (
+                    <p className="text-xs text-campusblue-800 font-medium">
                       ✓ Congratulations! Your profile satisfies all academic and backlog requirements for this role.
                     </p>
                   )}
@@ -484,40 +567,40 @@ export default function JobsPage() {
 
             {/* Description */}
             <div>
-              <h4 className="text-xs font-bold uppercase tracking-wider text-gray-700 mb-2">Role Overview</h4>
-              <p className="text-xs text-gray-700 leading-relaxed whitespace-pre-line">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-campusblue-800 mb-2">Role Overview</h4>
+              <p className="text-xs text-campusblue-800 leading-relaxed whitespace-pre-line">
                 {selectedJob.description}
               </p>
             </div>
 
             {/* Hard Eligibility Rules Config */}
             {selectedJob.eligibility_config && (
-              <div className="p-4 bg-blue-50/50 border border-blue-100 rounded-xl">
-                <h4 className="text-xs font-bold uppercase tracking-wider text-blue-900 mb-2">
+              <div className="p-4 bg-campusblue-50/50 border border-campusblue-50 rounded-xl">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-campusblue-900 mb-2">
                   Strict Eligibility Criteria
                 </h4>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
                   <div>
-                    <span className="text-gray-500 block text-2xs">Minimum CGPA:</span>
-                    <span className="font-bold text-gray-900">
+                    <span className="text-campusblue-500 block text-2xs">Minimum CGPA:</span>
+                    <span className="font-bold text-campusblue-900">
                       {selectedJob.eligibility_config.min_cgpa ?? "None"}
                     </span>
                   </div>
                   <div>
-                    <span className="text-gray-500 block text-2xs">Max Backlogs:</span>
-                    <span className="font-bold text-gray-900">
+                    <span className="text-campusblue-500 block text-2xs">Max Backlogs:</span>
+                    <span className="font-bold text-campusblue-900">
                       {selectedJob.eligibility_config.max_backlogs ?? "None"}
                     </span>
                   </div>
                   <div>
-                    <span className="text-gray-500 block text-2xs">Graduation Year:</span>
-                    <span className="font-bold text-gray-900">
+                    <span className="text-campusblue-500 block text-2xs">Graduation Year:</span>
+                    <span className="font-bold text-campusblue-900">
                       {selectedJob.eligibility_config.graduation_year ?? "All"}
                     </span>
                   </div>
                   <div>
-                    <span className="text-gray-500 block text-2xs">Allowed Branches:</span>
-                    <span className="font-bold text-gray-900">
+                    <span className="text-campusblue-500 block text-2xs">Allowed Branches:</span>
+                    <span className="font-bold text-campusblue-900">
                       {selectedJob.eligibility_config.allowed_branches?.join(", ") || "All Branches"}
                     </span>
                   </div>
@@ -525,29 +608,30 @@ export default function JobsPage() {
               </div>
             )}
 
+            {renderSkillRadar()}
             {/* Skill Requirements */}
             {selectedJob.requirements && selectedJob.requirements.length > 0 && (
               <div>
-                <h4 className="text-xs font-bold uppercase tracking-wider text-gray-700 mb-2">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-campusblue-800 mb-2">
                   Skill Requirements ({selectedJob.requirements.length})
                 </h4>
-                <div className="divide-y divide-gray-100 border border-gray-200 rounded-lg overflow-hidden">
+                <div className="divide-y divide-gray-100 border border-campusblue-100 rounded-lg overflow-hidden">
                   {selectedJob.requirements.map((r: any) => (
                     <div key={r.id} className="p-3 bg-white flex items-center justify-between text-xs">
                       <div className="flex items-center gap-2">
-                        <span className="font-semibold text-gray-900">{r.skill_name}</span>
+                        <span className="font-semibold text-campusblue-900">{r.skill_name}</span>
                         <StatusBadge status={r.required_proficiency} size="sm" />
                         {r.is_mandatory ? (
-                          <span className="px-2 py-0.5 rounded text-2xs font-bold bg-rose-50 text-rose-700 border border-rose-200">
+                          <span className="px-2 py-0.5 rounded text-2xs font-bold bg-campusblue-50 text-campusblue-800 border border-campusblue-100">
                             Mandatory
                           </span>
                         ) : (
-                          <span className="px-2 py-0.5 rounded text-2xs bg-gray-100 text-gray-600">
+                          <span className="px-2 py-0.5 rounded text-2xs bg-campusblue-50 text-campusblue-700">
                             Preferred
                           </span>
                         )}
                       </div>
-                      <span className="text-gray-500">Weight: {r.weight}x</span>
+                      <span className="text-campusblue-500">Weight: {r.weight}x</span>
                     </div>
                   ))}
                 </div>
@@ -559,3 +643,9 @@ export default function JobsPage() {
     </AppLayout>
   );
 }
+
+
+
+
+
+

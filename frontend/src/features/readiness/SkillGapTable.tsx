@@ -27,11 +27,11 @@ export const SkillGapTable: React.FC<SkillGapTableProps> = ({
     <Card
       title="Target Job Skill-Gap Analysis"
       subtitle="Compare your acquired competencies against the exact requirements of any posted placement opportunity."
-      className="border-blue-100"
+      className="border-campusblue-50"
     >
       {/* Job selector */}
       <div className="max-w-md mb-6">
-        <label className="block text-xs font-semibold text-gray-700 mb-1">
+        <label className="block text-xs font-semibold text-campusblue-800 mb-1">
           Select Target Job to Compare
         </label>
         <Select
@@ -53,48 +53,48 @@ export const SkillGapTable: React.FC<SkillGapTableProps> = ({
         <div className="space-y-6 animate-in fade-in duration-200">
           {/* Summary Metric Cards */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-center">
-            <div className="p-4 bg-blue-50 border border-blue-200 rounded-xl">
-              <span className="text-2xs font-semibold uppercase tracking-wider text-blue-800 block">
+            <div className="p-4 bg-campusblue-50 border border-campusblue-100 shadow-sm rounded-xl">
+              <span className="text-2xs font-semibold uppercase tracking-wider text-campusblue-900 font-serif block">
                 Job Readiness
               </span>
-              <span className="text-2xl font-black text-blue-700 mt-1 block">
+              <span className="text-2xl font-black text-campusblue-800 mt-1 block">
                 {Math.round(skillGap.job_readiness_score)}%
               </span>
             </div>
 
-            <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-xl">
-              <span className="text-2xs font-semibold uppercase tracking-wider text-emerald-800 block">
+            <div className="p-4 bg-campusblue-50 border border-campusblue-100 shadow-sm rounded-xl">
+              <span className="text-2xs font-semibold uppercase tracking-wider text-campusblue-900 font-serif block">
                 Matched Skills
               </span>
-              <span className="text-2xl font-black text-emerald-700 mt-1 block">
+              <span className="text-2xl font-black text-campusblue-800 mt-1 block">
                 {skillGap.matched_count}
               </span>
             </div>
 
-            <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl">
-              <span className="text-2xs font-semibold uppercase tracking-wider text-amber-800 block">
+            <div className="p-4 bg-campusblue-50 border border-campusblue-100 shadow-sm rounded-xl">
+              <span className="text-2xs font-semibold uppercase tracking-wider text-campusblue-900 font-serif block">
                 Partial Matches
               </span>
-              <span className="text-2xl font-black text-amber-700 mt-1 block">
+              <span className="text-2xl font-black text-campusblue-800 mt-1 block">
                 {skillGap.partial_count}
               </span>
             </div>
 
-            <div className="p-4 bg-rose-50 border border-rose-200 rounded-xl">
-              <span className="text-2xs font-semibold uppercase tracking-wider text-rose-800 block">
+            <div className="p-4 bg-campusblue-50 border border-campusblue-100 shadow-sm rounded-xl">
+              <span className="text-2xs font-semibold uppercase tracking-wider text-campusblue-900 font-serif block">
                 Missing Skills
               </span>
-              <span className="text-2xl font-black text-rose-700 mt-1 block">
+              <span className="text-2xl font-black text-campusblue-800 mt-1 block">
                 {skillGap.missing_count}
               </span>
             </div>
           </div>
 
           {/* Gap Detail Table */}
-          <div className="border border-gray-200 rounded-xl overflow-hidden shadow-xs">
+          <div className="border border-campusblue-100 rounded-xl overflow-hidden shadow-xs">
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs">
-                <thead className="bg-gray-50 border-b border-gray-200 text-gray-700 font-semibold uppercase tracking-wider">
+                <thead className="bg-campusblue-50 border-b border-campusblue-100 text-campusblue-800 font-semibold uppercase tracking-wider">
                   <tr>
                     <th className="px-4 py-3">Skill</th>
                     <th className="px-4 py-3">Requirement</th>
@@ -103,68 +103,68 @@ export const SkillGapTable: React.FC<SkillGapTableProps> = ({
                     <th className="px-4 py-3">Recommendation</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-100 bg-white">
+                <tbody className="divide-y divide-campusblue-50 bg-white/90 font-serif">
                   {/* Matched */}
                   {skillGap.matched_skills.map((s) => (
-                    <tr key={s.skill_id} className="hover:bg-gray-50/50">
-                      <td className="px-4 py-3 font-semibold text-gray-900 flex items-center gap-1.5">
+                    <tr key={s.skill_id} className="hover:bg-campusblue-50/50 transition-colors">
+                      <td className="px-4 py-3 font-semibold text-campusblue-900 flex items-center gap-1.5">
                         <span>{s.skill_name}</span>
                         {s.is_mandatory && (
-                          <span className="text-2xs px-1.5 py-0.5 rounded bg-rose-50 text-rose-700 font-bold border border-rose-200">
+                          <span className="text-2xs px-1.5 py-0.5 rounded bg-campusblue-50 text-campusblue-800 font-bold border border-campusblue-100">
                             Req
                           </span>
                         )}
                       </td>
-                      <td className="px-4 py-3 text-gray-600">{s.required_proficiency}</td>
-                      <td className="px-4 py-3 font-medium text-emerald-700">
+                      <td className="px-4 py-3 text-campusblue-700">{s.required_proficiency}</td>
+                      <td className="px-4 py-3 font-medium text-campusblue-800">
                         {s.student_proficiency || "Matched"}
                       </td>
                       <td className="px-4 py-3">
                         <StatusBadge status="LOW" size="sm" />
                       </td>
-                      <td className="px-4 py-3 text-gray-600">{s.recommendation}</td>
+                      <td className="px-4 py-3 text-campusblue-700">{s.recommendation}</td>
                     </tr>
                   ))}
 
                   {/* Partial */}
                   {skillGap.partial_skills.map((s) => (
-                    <tr key={s.skill_id} className="hover:bg-amber-50/20">
-                      <td className="px-4 py-3 font-semibold text-gray-900 flex items-center gap-1.5">
+                    <tr key={s.skill_id} className="hover:bg-campusblue-50/30 transition-colors">
+                      <td className="px-4 py-3 font-semibold text-campusblue-900 flex items-center gap-1.5">
                         <span>{s.skill_name}</span>
                         {s.is_mandatory && (
-                          <span className="text-2xs px-1.5 py-0.5 rounded bg-rose-50 text-rose-700 font-bold border border-rose-200">
+                          <span className="text-2xs px-1.5 py-0.5 rounded bg-campusblue-50 text-campusblue-800 font-bold border border-campusblue-100">
                             Req
                           </span>
                         )}
                       </td>
-                      <td className="px-4 py-3 text-gray-600">{s.required_proficiency}</td>
-                      <td className="px-4 py-3 font-medium text-amber-700">
+                      <td className="px-4 py-3 text-campusblue-700">{s.required_proficiency}</td>
+                      <td className="px-4 py-3 font-medium text-campusblue-800">
                         {s.student_proficiency}
                       </td>
                       <td className="px-4 py-3">
                         <StatusBadge status={s.severity || "MEDIUM"} size="sm" />
                       </td>
-                      <td className="px-4 py-3 text-amber-800 font-medium">{s.recommendation}</td>
+                      <td className="px-4 py-3 text-campusblue-900 font-serif font-medium">{s.recommendation}</td>
                     </tr>
                   ))}
 
                   {/* Missing */}
                   {skillGap.missing_skills.map((s) => (
-                    <tr key={s.skill_id} className="hover:bg-rose-50/20">
-                      <td className="px-4 py-3 font-semibold text-gray-900 flex items-center gap-1.5">
+                    <tr key={s.skill_id} className="hover:bg-campusblue-50/30 transition-colors">
+                      <td className="px-4 py-3 font-semibold text-campusblue-900 flex items-center gap-1.5">
                         <span>{s.skill_name}</span>
                         {s.is_mandatory && (
-                          <span className="text-2xs px-1.5 py-0.5 rounded bg-rose-50 text-rose-700 font-bold border border-rose-200">
+                          <span className="text-2xs px-1.5 py-0.5 rounded bg-campusblue-50 text-campusblue-800 font-bold border border-campusblue-100">
                             Req
                           </span>
                         )}
                       </td>
-                      <td className="px-4 py-3 text-gray-600">{s.required_proficiency}</td>
-                      <td className="px-4 py-3 font-medium text-rose-600 italic">Not in profile</td>
+                      <td className="px-4 py-3 text-campusblue-700">{s.required_proficiency}</td>
+                      <td className="px-4 py-3 font-medium text-campusblue-700 italic">Not in profile</td>
                       <td className="px-4 py-3">
                         <StatusBadge status={s.severity || "CRITICAL"} size="sm" />
                       </td>
-                      <td className="px-4 py-3 text-rose-800 font-medium">{s.recommendation}</td>
+                      <td className="px-4 py-3 text-campusblue-900 font-serif font-medium">{s.recommendation}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -181,3 +181,9 @@ export const SkillGapTable: React.FC<SkillGapTableProps> = ({
     </Card>
   );
 };
+
+
+
+
+
+

@@ -23,7 +23,7 @@ export function Tabs<T extends string = string>({
   className = "",
 }: TabsProps<T>) {
   return (
-    <div className={`border-b border-gray-200 ${className}`}>
+    <div className={`border-b border-campusblue-100 ${className}`}>
       <nav className="-mb-px flex space-x-6" aria-label="Tabs">
         {tabs.map((tab) => {
           const isActive = tab.key === activeKey;
@@ -33,8 +33,8 @@ export function Tabs<T extends string = string>({
               onClick={() => onChange(tab.key)}
               className={`py-3 px-1 border-b-2 font-medium text-sm flex items-center gap-2 transition cursor-pointer ${
                 isActive
-                  ? "border-blue-600 text-blue-600 font-semibold"
-                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                  ? "border-campusblue-700 text-campusblue-900 font-bold font-serif"
+                  : "border-transparent text-campusblue-500 hover:text-campusblue-800 hover:border-campusblue-200 font-serif"
               }`}
             >
               {tab.icon && <span>{tab.icon}</span>}
@@ -42,7 +42,7 @@ export function Tabs<T extends string = string>({
               {typeof tab.count === "number" && (
                 <span
                   className={`ml-1.5 py-0.5 px-2 rounded-full text-xs font-semibold ${
-                    isActive ? "bg-blue-100 text-blue-800" : "bg-gray-100 text-gray-600"
+                    isActive ? "bg-campusblue-50 text-campusblue-900" : "bg-white 200 text-campusblue-700"
                   }`}
                 >
                   {tab.count}
@@ -55,3 +55,7 @@ export function Tabs<T extends string = string>({
     </div>
   );
 }
+
+
+
+

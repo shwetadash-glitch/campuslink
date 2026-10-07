@@ -26,17 +26,17 @@ export const FormField: React.FC<FormFieldProps> = ({
       {label && (
         <label
           htmlFor={htmlFor}
-          className="text-xs font-semibold text-gray-700 flex items-center gap-1"
+          className="text-xs font-semibold text-campusblue-900 font-serif tracking-wide flex items-center gap-1"
         >
           {label}
-          {required && <span className="text-rose-500 font-bold">*</span>}
+          {required && <span className="text-campusblue-500 font-bold">*</span>}
         </label>
       )}
 
       {children}
 
       {error ? (
-        <p className="text-xs text-rose-600 font-medium mt-0.5 animate-in fade-in duration-100 flex items-center gap-1">
+        <p className="text-xs text-campusblue-700 font-medium mt-0.5 animate-in fade-in duration-100 flex items-center gap-1">
           <svg className="w-3.5 h-3.5 shrink-0" fill="currentColor" viewBox="0 0 20 20">
             <path
               fillRule="evenodd"
@@ -47,8 +47,13 @@ export const FormField: React.FC<FormFieldProps> = ({
           <span>{error}</span>
         </p>
       ) : helperText ? (
-        <p className="text-xs text-gray-500 mt-0.5">{helperText}</p>
+        <p className="text-xs text-campusblue-500 mt-0.5">{helperText}</p>
       ) : null}
     </div>
   );
 };
+
+
+
+
+

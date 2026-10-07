@@ -55,7 +55,7 @@ export const EligibilitySandboxCard: React.FC<EligibilitySandboxCardProps> = ({ 
     <Card
       title="Eligibility Engine Sandbox"
       subtitle="Preview real-time deterministic eligibility checks for any student against your job criteria."
-      className="border-purple-100 bg-gradient-to-br from-white to-purple-50/20"
+      className="border-campusblue-50 bg-gradient-to-br from-white to-campusblue-50/20"
     >
       <form onSubmit={handleCheck} className="space-y-4">
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -102,24 +102,24 @@ export const EligibilitySandboxCard: React.FC<EligibilitySandboxCardProps> = ({ 
 
       {/* Result Display */}
       {result && (
-        <div className="mt-6 pt-6 border-t border-purple-100 animate-in fade-in duration-200">
+        <div className="mt-6 pt-6 border-t border-campusblue-50 animate-in fade-in duration-200">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
-              <span className="text-xs font-semibold text-gray-600">Overall Result:</span>
+              <span className="text-xs font-semibold text-campusblue-700">Overall Result:</span>
               <StatusBadge
                 status={result.is_eligible ? "ELIGIBLE" : "NOT_ELIGIBLE"}
                 size="md"
               />
             </div>
             {result.student_name && (
-              <span className="text-xs font-semibold text-gray-700">
+              <span className="text-xs font-semibold text-campusblue-800">
                 Candidate: {result.student_name}
               </span>
             )}
           </div>
 
           {result.failure_reasons && result.failure_reasons.length > 0 && (
-            <div className="p-3 mb-4 bg-rose-50 border border-rose-200 rounded-lg text-xs text-rose-700">
+            <div className="p-3 mb-4 bg-campusblue-50 border border-campusblue-100 rounded-lg text-xs text-campusblue-800">
               <span className="font-bold block mb-1">Eligibility Criteria Violations:</span>
               <ul className="list-disc pl-5 space-y-0.5">
                 {result.failure_reasons.map((r: string, i: number) => (
@@ -132,19 +132,19 @@ export const EligibilitySandboxCard: React.FC<EligibilitySandboxCardProps> = ({ 
           {result.rule_evaluations && (
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
               {Object.entries(result.rule_evaluations).map(([rule, val]: [string, any]) => (
-                <div key={rule} className="p-3 bg-white border border-gray-200 rounded-lg">
-                  <span className="text-gray-500 font-medium block capitalize">
+                <div key={rule} className="p-3 bg-white border border-campusblue-100 rounded-lg">
+                  <span className="text-campusblue-500 font-medium block capitalize">
                     {rule.replace(/_/g, " ")}
                   </span>
                   <span
                     className={`font-bold mt-1 inline-block ${
-                      val?.passed || val === true ? "text-emerald-600" : "text-rose-600"
+                      val?.passed || val === true ? "text-campusblue-700" : "text-campusblue-700"
                     }`}
                   >
                     {val?.passed || val === true ? "Passed" : "Failed"}
                   </span>
                   {val?.value !== undefined && (
-                    <span className="text-gray-400 text-2xs block mt-0.5">
+                    <span className="text-campusblue-300 text-2xs block mt-0.5">
                       Actual: {String(val.value)}
                     </span>
                   )}
@@ -157,3 +157,7 @@ export const EligibilitySandboxCard: React.FC<EligibilitySandboxCardProps> = ({ 
     </Card>
   );
 };
+
+
+
+

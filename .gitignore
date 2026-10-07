@@ -42,3 +42,8 @@ backend/uploads/
 
 # Misc logs
 *.log
+
+# Laravel
+backend-laravel/.env
+backend-laravel/.env.*
+!backend-laravel/.env.example

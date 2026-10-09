@@ -223,6 +223,3 @@ export const CertModal: React.FC<CertModalProps> = ({
   );
 };
 
-
-
-

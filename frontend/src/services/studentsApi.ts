@@ -57,10 +57,10 @@ export const studentsApi = {
   deleteProject: (id: number) =>
     apiClient.delete(`/api/v1/students/me/projects/${id}`),
 
-  createCertification: (data: Omit<StudentCertificationItem, "id">) =>
+  createCertification: (data: FormData | Omit<StudentCertificationItem, "id">) =>
     apiClient.post<StudentCertificationItem>("/api/v1/students/me/certifications", data),
 
-  updateCertification: (id: number, data: Partial<StudentCertificationItem>) =>
+  updateCertification: (id: number, data: FormData | Partial<StudentCertificationItem>) =>
     apiClient.put<StudentCertificationItem>(
       `/api/v1/students/me/certifications/${id}`,
       data

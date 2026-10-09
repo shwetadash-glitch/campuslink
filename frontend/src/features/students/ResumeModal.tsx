@@ -6,7 +6,7 @@ interface ResumeModalProps {
   onClose: () => void;
   studentId: string;
   studentName: string;
-  readinessScore?: number;
+  readinessScore?: number | null;
 }
 
 export function ResumeModal({ isOpen, onClose, studentId, studentName, readinessScore }: ResumeModalProps) {
@@ -205,5 +205,3 @@ export function ResumeModal({ isOpen, onClose, studentId, studentName, readiness
     </div>
   );
 }
-
-

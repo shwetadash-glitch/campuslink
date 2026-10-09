@@ -79,6 +79,7 @@ Route::prefix('v1')->group(function () {
             Route::get('/me', [RecruiterController::class, 'me']);
             Route::put('/me/company', [RecruiterController::class, 'updateCompany']);
             Route::get('/me/dashboard', [RecruiterController::class, 'dashboard']);
+            Route::get('/me/shortlisted', [RecruiterController::class, 'shortlistedCandidates']);
             Route::get('/candidates/{id}', [RecruiterController::class, 'candidate']);
             
             Route::get('/me/jobs', [\App\Http\Controllers\Api\RecruiterJobController::class, 'index']);
@@ -105,6 +106,7 @@ Route::prefix('v1')->group(function () {
         });
 
         Route::middleware('role:SUPER_ADMIN,PLACEMENT_OFFICER')->prefix('officer')->group(function () {
+            Route::get('/dashboard', [\App\Http\Controllers\Api\OfficerDashboardController::class, 'index']);
             Route::get('/students', [OfficerController::class, 'students']);
             Route::get('/students/{id}', [OfficerController::class, 'student']);
             Route::get('/companies', [OfficerController::class, 'companies']);
@@ -140,3 +142,5 @@ Route::get('/ollama-test', function () {
 
     return $response->json();
 });
+
+

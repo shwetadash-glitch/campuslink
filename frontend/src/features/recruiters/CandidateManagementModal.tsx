@@ -183,9 +183,9 @@ export const CandidateManagementModal: React.FC<CandidateManagementModalProps> =
               </div>
               <p className="text-2xs text-campusblue-800">
                 Evaluated {evaluationSummary.total} candidate(s) against linked job rules.
-                {Object.keys(evaluationSummary.breakdown).length > 0 && (
+                {evaluationSummary.breakdown && Object.keys(evaluationSummary.breakdown).length > 0 && (
                   <span className="block mt-1 font-semibold">
-                    Ineligible reasons: {Object.entries(evaluationSummary.breakdown).map(([r, c]) => `${r}: ${c}`).join(", ")}
+                    Ineligible reasons: {Object.entries(evaluationSummary.breakdown || {}).map(([r, c]) => `${r}: ${c}`).join(", ")}
                   </span>
                 )}
               </p>
@@ -368,6 +368,7 @@ export const CandidateManagementModal: React.FC<CandidateManagementModalProps> =
     </>
   );
 };
+
 
 
 

@@ -87,6 +87,8 @@ export interface ShortlistCandidate {
 }
 
 export const adminApi = {
+  getDashboard: () => apiClient.get<any>('/api/v1/officer/dashboard'),
+
   getAiShortlist: (driveId: number, params?: { limit?: number; offset?: number }, options?: RequestInit) => {
     const q = new URLSearchParams();
     if (params?.limit) q.append("limit", params.limit.toString());
@@ -173,4 +175,5 @@ export const adminApi = {
     description?: string;
   }) => apiClient.post<OfficerCompanyItem>("/api/v1/officer/companies", data),
 };
+
 

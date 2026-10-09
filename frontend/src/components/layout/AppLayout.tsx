@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import ProtectedRoute from "@/components/ProtectedRoute";
+import { AiNavigator } from "@/components/AiNavigator";
 import { StatusBadge } from "../ui/StatusBadge";
 import { Button } from "../ui/Button";
 
@@ -106,9 +107,11 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children, allowedRoles = [
           {children}
         </main>
       </div>
+      <AiNavigator />
     </ProtectedRoute>
   );
 };
+
 
 
 

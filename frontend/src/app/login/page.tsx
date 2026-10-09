@@ -82,10 +82,42 @@ export default function LoginPage() {
           </Button>
         </form>
 
-        <div className="mt-6 pt-6 border-t border-campusblue-50">
-          
+                  <div className="mt-6 pt-6 border-t border-campusblue-50">
+            <p className="text-2xs font-bold uppercase tracking-wider text-campusblue-300 mb-2">
+              Quick Demo Accounts
+            </p>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => fillCredentials("student1@college.edu", "password")}
+                className="text-xs bg-campusblue-50 hover:bg-campusblue-100 text-campusblue-800 px-3 py-1.5 rounded-lg font-medium transition cursor-pointer"
+              >
+                Student
+              </button>
+              <button
+                type="button"
+                onClick={() => fillCredentials("recruiter1@comp1.com", "password")}
+                className="text-xs bg-campusblue-50 hover:bg-campusblue-100 text-campusblue-800 px-3 py-1.5 rounded-lg font-medium transition cursor-pointer"
+              >
+                Recruiter
+              </button>
+              <button
+                type="button"
+                onClick={() => fillCredentials("admin@campuslink.com", "password")}
+                className="text-xs bg-campusblue-50 hover:bg-campusblue-100 text-campusblue-800 px-3 py-1.5 rounded-lg font-medium transition cursor-pointer"
+              >
+                Admin
+              </button>
+              <button
+                type="button"
+                onClick={() => fillCredentials("po@campuslink.com", "password")}
+                className="text-xs bg-campusblue-50 hover:bg-campusblue-100 text-campusblue-800 px-3 py-1.5 rounded-lg font-medium transition cursor-pointer"
+              >
+                TPO
+              </button>
+            </div>
 
-          <div className="mt-4 text-center text-xs text-campusblue-500">
+            <div className="mt-4 text-center text-xs text-campusblue-500">
             <span>Don&apos;t have an account? </span>
             <a href="/register" className="font-semibold text-campusblue-700 hover:underline">
               Create an account
@@ -96,6 +128,9 @@ export default function LoginPage() {
     </div>
   );
 }
+
+
+
 
 
 

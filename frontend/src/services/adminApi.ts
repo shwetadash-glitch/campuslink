@@ -41,7 +41,6 @@ export interface OfficerStudentItem {
   cgpa: number;
   backlogs_current: number;
   backlogs_history: number;
-    readiness_score?: number;
   phone: string | null;
   email: string | null;
   skills_count: number;
@@ -175,5 +174,3 @@ export const adminApi = {
     description?: string;
   }) => apiClient.post<OfficerCompanyItem>("/api/v1/officer/companies", data),
 };
-
-

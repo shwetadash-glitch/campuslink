@@ -160,12 +160,23 @@ export const apiClient = {
       headers,
     }),
 
-  put: <T>(endpoint: string, body?: any, headers?: Record<string, string>) =>
-    request<T>(endpoint, {
+  put: <T>(endpoint: string, body?: any, headers?: Record<string, string>) => {
+    if (body instanceof FormData) {
+      if (!body.has("_method")) {
+        body.append("_method", "PUT");
+      }
+      return request<T>(endpoint, {
+        method: "POST",
+        body,
+        headers,
+      });
+    }
+    return request<T>(endpoint, {
       method: "PUT",
       body: JSON.stringify(body),
       headers,
-    }),
+    });
+  },
 
   patch: <T>(endpoint: string, body?: any, headers?: Record<string, string>) =>
     request<T>(endpoint, {

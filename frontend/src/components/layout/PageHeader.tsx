@@ -7,18 +7,24 @@ import { Button } from "../ui/Button";
 export interface PageHeaderProps {
   title: string;
   subtitle?: string;
+  description?: string;
   backHref?: string;
   backLabel?: string;
   actions?: React.ReactNode;
+  actionLabel?: string;
+  onAction?: () => void;
   className?: string;
 }
 
 export const PageHeader: React.FC<PageHeaderProps> = ({
   title,
   subtitle,
+  description,
   backHref,
   backLabel = "Back",
   actions,
+  actionLabel,
+  onAction,
   className = "",
 }) => {
   return (
@@ -35,14 +41,17 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
         )}
         <h1 className="text-3xl font-bold text-campusblue-900 tracking-tight font-serif">{title}</h1>
         {subtitle && <p className="text-sm text-campusblue-500 mt-1 font-serif italic">{subtitle}</p>}
+        {description && <p className="text-sm text-campusblue-600 mt-1 font-serif">{description}</p>}
       </div>
 
-      {actions && <div className="flex items-center gap-3 shrink-0">{actions}</div>}
+      <div className="flex items-center gap-3 shrink-0">
+        {actions}
+        {actionLabel && onAction && (
+          <Button onClick={onAction} variant="primary">
+            {actionLabel}
+          </Button>
+        )}
+      </div>
     </div>
   );
 };
-
-
-
-
-

@@ -130,20 +130,60 @@ export default function DriveManagerPage() {
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" /></svg>
               </button>
             </div>
-            <div className="p-6 space-y-4">
-              <p className="text-sm text-campusblue-700 leading-relaxed">
-                The comprehensive drive management configuration panel is currently under active development. Once finalized, this interface will allow Placement Officers to:
-              </p>
-              <ul className="list-disc list-inside text-sm text-campusblue-800 space-y-2 ml-1">
-                <li><span className="font-semibold">Review & Approve</span> corporate job requisitions.</li>
-                <li><span className="font-semibold">Deploy AI Rules</span> based on cohort readiness scoring.</li>
-                <li><span className="font-semibold">Schedule Rounds</span> using the Conflict-Free Scheduler.</li>
-                <li><span className="font-semibold">Monitor Pipeline</span> for real-time candidate conversions.</li>
-              </ul>
+                        <div className="p-6 space-y-6">
+              <div>
+                <label className="block text-sm font-semibold text-campusblue-900 mb-2">Drive Status</label>
+                <select className="w-full p-2.5 border border-campusblue-200 rounded-lg text-sm text-campusblue-800 bg-white focus:outline-none focus:ring-2 focus:ring-campusblue-500">
+                  <option value="active">Active (Accepting Applications)</option>
+                  <option value="drafts">Draft (Setup Phase)</option>
+                  <option value="completed">Completed (Archived)</option>
+                </select>
+              </div>
+              
+              <div className="p-4 bg-campusblue-50/50 rounded-xl border border-campusblue-100">
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="font-bold text-campusblue-900 text-sm">AI Shortlisting Rules</h3>
+                  <div className="relative inline-block w-10 mr-2 align-middle select-none transition duration-200 ease-in">
+                      <input type="checkbox" name="toggle" id="toggle" className="toggle-checkbox absolute block w-5 h-5 rounded-full bg-white border-4 border-campusblue-200 appearance-none cursor-pointer checked:right-0 checked:border-green-500 transition-all duration-300" defaultChecked />
+                      <label htmlFor="toggle" className="toggle-label block overflow-hidden h-5 rounded-full bg-campusblue-200 cursor-pointer"></label>
+                  </div>
+                </div>
+                <p className="text-xs text-campusblue-500 mb-4">Automatically filter candidates based on readiness dimensions before they reach the recruiter.</p>
+                
+                <div className="space-y-3">
+                  <div>
+                    <label className="flex justify-between text-xs font-semibold text-campusblue-800 mb-1">
+                      <span>Minimum Readiness Score</span>
+                      <span className="text-campusblue-900">75 / 100</span>
+                    </label>
+                    <input type="range" min="0" max="100" defaultValue="75" className="w-full h-2 bg-campusblue-200 rounded-lg appearance-none cursor-pointer" />
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-campusblue-900 mb-2">Rounds Configuration</label>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between p-3 border border-campusblue-100 rounded-lg bg-white">
+                    <span className="text-sm font-medium text-campusblue-800">1. Online Assessment</span>
+                    <button className="text-xs bg-campusblue-50 text-campusblue-700 px-2 py-1 rounded hover:bg-campusblue-100">Edit</button>
+                  </div>
+                  <div className="flex items-center justify-between p-3 border border-campusblue-100 rounded-lg bg-white">
+                    <span className="text-sm font-medium text-campusblue-800">2. Technical Interview</span>
+                    <button className="text-xs bg-campusblue-50 text-campusblue-700 px-2 py-1 rounded hover:bg-campusblue-100">Edit</button>
+                  </div>
+                  <button className="w-full py-2 border-2 border-dashed border-campusblue-200 rounded-lg text-sm text-campusblue-500 font-semibold hover:border-campusblue-400 hover:text-campusblue-700 transition">
+                    + Add New Round
+                  </button>
+                </div>
+              </div>
             </div>
-            <div className="p-6 border-t border-campusblue-50 bg-campusblue-50 flex justify-end">
-              <button onClick={() => setManagingDrive(null)} className="bg-campusblue-900 hover:bg-campusblue-900 text-white px-5 py-2.5 rounded-xl text-sm font-bold transition shadow-sm">
-                Close Panel
+            <div className="p-4 border-t border-campusblue-50 bg-campusblue-50 flex justify-between items-center">
+              <button onClick={() => setManagingDrive(null)} className="text-campusblue-600 hover:text-campusblue-900 font-semibold text-sm px-4">
+                Cancel
+              </button>
+              <button onClick={() => { alert("Configuration saved!"); setManagingDrive(null); }} className="bg-campusblue-900 hover:bg-campusblue-900 text-white px-6 py-2.5 rounded-xl text-sm font-bold transition shadow-sm">
+                Save Configuration
               </button>
             </div>
           </div>
@@ -152,6 +192,7 @@ export default function DriveManagerPage() {
     </AppLayout>
   );
 }
+
 
 
 

@@ -83,32 +83,7 @@ export default function LoginPage() {
         </form>
 
         <div className="mt-6 pt-6 border-t border-campusblue-50">
-          <p className="text-2xs font-bold uppercase tracking-wider text-campusblue-300 mb-2">
-            Quick Demo Accounts
-          </p>
-          <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={() => fillCredentials("student1@college.edu", "password")}
-              className="text-xs bg-campusblue-50 hover:bg-campusblue-50 text-campusblue-800 px-3 py-1.5 rounded-lg font-medium transition cursor-pointer"
-            >
-              Student Demo
-            </button>
-            <button
-              type="button"
-              onClick={() => fillCredentials("recruiter1@comp1.com", "password")}
-              className="text-xs bg-campusblue-50 hover:bg-campusblue-50 text-campusblue-800 px-3 py-1.5 rounded-lg font-medium transition cursor-pointer"
-            >
-              Recruiter Demo
-            </button>
-            <button
-              type="button"
-              onClick={() => fillCredentials("admin@campuslink.com", "password")}
-              className="text-xs bg-campusblue-50 hover:bg-campusblue-100 text-campusblue-900 px-3 py-1.5 rounded-lg font-medium transition cursor-pointer"
-            >
-              Admin Demo</button><button type="button" onClick={() => fillCredentials("po@campuslink.com", "password")} className="text-xs bg-campusblue-50 hover:bg-campusblue-100 text-campusblue-800 px-3 py-1.5 rounded-lg font-medium transition cursor-pointer">TPO Demo
-            </button>
-          </div>
+          
 
           <div className="mt-4 text-center text-xs text-campusblue-500">
             <span>Don&apos;t have an account? </span>
@@ -121,6 +96,8 @@ export default function LoginPage() {
     </div>
   );
 }
+
+
 
 
 

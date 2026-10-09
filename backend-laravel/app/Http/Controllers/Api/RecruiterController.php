@@ -47,7 +47,43 @@ class RecruiterController extends Controller {
         $company->update($validated);
         return response()->json($company);
     }
-    
+
+    public function shortlistedCandidates(Request $request) {
+        $recruiter = $request->user()->recruiterProfile;
+        $drives = PlacementDrive::where('company_id', $recruiter->company_id)->pluck('id');
+        
+                $candidates = DriveCandidate::with(['student.user', 'student.skills', 'drive'])
+            ->whereIn('drive_id', $drives)
+            ->where('status', 'SHORTLISTED')
+            ->get();
+            
+        \Illuminate\Support\Facades\Log::info('Shortlisted Candidates API called', ['count' => $candidates->count()]);
+
+        $results = $candidates->map(function ($c) {
+            $skills = $c->student ? $c->student->skills->pluck('skill_name')->toArray() : [];
+            return [
+                'id' => $c->id,
+                'drive_id' => $c->drive_id,
+                'drive_name' => $c->drive ? $c->drive->name : "Unknown Drive",
+                'student_id' => $c->student_id,
+                'student_name' => $c->student ? $c->student->first_name . ' ' . $c->student->last_name : "Unknown",
+                'student_identifier' => $c->student ? $c->student->student_identifier : "N/A",
+                'branch' => $c->student ? $c->student->branch : "N/A",
+                'cgpa' => $c->student ? $c->student->cgpa : 0.0,
+                'phone' => $c->student ? $c->student->phone : "N/A",
+                'email' => ($c->student && $c->student->user) ? $c->student->user->email : "N/A",
+                'graduation_year' => $c->student ? $c->student->graduation_year : "N/A",
+                'skills' => $skills,
+                'status' => $c->status,
+                'eligibility_status' => true,
+                'shortlist_status' => true,
+                'registration_timestamp' => $c->registered_at
+            ];
+        });
+        
+        return response()->json($results->values()->toArray());
+    }
+
     public function dashboard(Request $request) {
         $recruiter = $request->user()->recruiterProfile;
         
@@ -145,3 +181,11 @@ class RecruiterController extends Controller {
         ]);
     }
 }
+
+
+
+
+
+
+
+

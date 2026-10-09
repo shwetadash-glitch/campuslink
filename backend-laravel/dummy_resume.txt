@@ -1,0 +1,22 @@
+Saurabh Kumar
+Computer Science Engineering
+CGPA: 9.2
+
+Professional Objective:
+A highly motivated and passionate Computer Science student looking for an exciting software engineering role to leverage my strong programming skills and problem-solving abilities.
+
+Technical Skills:
+- Programming Languages: Python, Java, C++, JavaScript
+- Frameworks: React.js, Laravel, Node.js
+- Tools & Databases: Git, Docker, MySQL, PostgreSQL, MongoDB
+
+Projects:
+1. E-Commerce Platform
+Developed a full-stack e-commerce platform using React and Node.js. Integrated Stripe for secure payments and used MongoDB for product catalog storage. Achieved a 20% reduction in page load time by optimizing database queries.
+
+2. AI Resume Parser
+Built an AI-powered resume parser using Python and LLaMA 3.2. Extracted key information like skills and education with 95% accuracy.
+
+Certifications:
+- AWS Certified Solutions Architect - Associate
+- Meta Front-End Developer Professional Certificate

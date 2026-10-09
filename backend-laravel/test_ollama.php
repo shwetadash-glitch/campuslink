@@ -1,16 +1,15 @@
 <?php
-$ollamaUrl = env('OLLAMA_URL', 'http://172.20.216.88:11434');
-$ollamaModel = env('OLLAMA_MODEL', 'llama3.2');
-$systemPrompt = "You are an AI assistant. I will provide students with their stats and IDs. For EACH student, write EXACTLY 1 short sentence justifying their tier. Output MUST be valid JSON where the keys are the EXACT numeric student IDs provided, and the values are the 1-sentence justifications. Example: {\"123\": \"Justification here\"}.";
-$batchContext = "ID: 100 | Student Alice. Score: 80. Eligible: Yes. Missing: Docker. Matched: React. Tier: HIGHLY_EMPLOYABLE.\nID: 105 | Student Bob. Score: 40. Eligible: No. Missing: Java. Matched: . Tier: NOT_READY.";
-$response = Http::timeout(10)->post($ollamaUrl . '/api/chat', [
-    'model' => $ollamaModel,
-    'messages' => [
-        ['role' => 'system', 'content' => $systemPrompt],
-        ['role' => 'user', 'content' => $batchContext]
-    ],
+require 'vendor/autoload.php';
+$app = require_once 'bootstrap/app.php';
+$kernel = $app->make(Illuminate\Contracts\Console\Kernel::class);
+$kernel->bootstrap();
+
+$text = file_get_contents('dummy_resume.txt');
+$prompt = "You are a highly accurate AI resume parser. Extract the following information from the provided resume text and format it STRICTLY as a JSON object with no markdown wrappers, no backticks, and no extra text.\nThe JSON must follow this exact schema:\n{\n  \"bio\": \"A concise 2-sentence summary...\",\n  \"cgpa\": 9.0,\n  \"skills\": [\"Python\", \"React\"],\n  \"projects\": [\n    { \"title\": \"Project Name\", \"description\": \"Brief project description\" }\n  ]\n}\n\nRESUME TEXT:\n" . $text;
+$response = \Illuminate\Support\Facades\Http::timeout(120)->post(env('OLLAMA_URL', 'http://localhost:11434') . '/api/generate', [
+    'model' => env('OLLAMA_MODEL', 'llama3.2'),
+    'prompt' => $prompt,
     'stream' => false,
     'format' => 'json'
 ]);
-echo "Status: " . $response->status() . "\n";
-echo "Content: " . $response->json('message.content') . "\n";
+echo $response->body();

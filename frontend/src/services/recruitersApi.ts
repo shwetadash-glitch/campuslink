@@ -19,11 +19,13 @@ export interface CandidateItem {
   graduation_year?: number | null;
   phone?: string | null;
   email?: string | null;
+  skills?: string[];
   eligibility_status: boolean;
   registration_status: string;
   shortlist_status: boolean;
   candidate_notes?: string | null;
   registration_timestamp?: string | null;
+  drive_name?: string;
 }
 
 export interface RecruiterDashboardMetrics {
@@ -38,6 +40,8 @@ export const recruitersApi = {
 
   updateCompany: (data: Partial<CompanyData>) =>
     apiClient.put<CompanyData>("/api/v1/recruiters/me/company", data),
+
+  getGlobalShortlisted: () => apiClient.get<CandidateItem[]>('/api/v1/recruiters/me/shortlisted').catch(err => { console.error('SHORTLISTED API ERROR', err); throw err; }),
 
   getDashboardMetrics: () =>
     apiClient.get<RecruiterDashboardMetrics>("/api/v1/recruiters/me/dashboard"),
@@ -121,3 +125,6 @@ export const recruitersApi = {
   getCandidateProfile: (studentId: number) =>
     apiClient.get<any>(`/api/v1/recruiters/candidates/${studentId}`),
 };
+
+
+

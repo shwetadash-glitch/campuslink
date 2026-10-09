@@ -30,7 +30,7 @@ class DriveController extends Controller {
         return response()->json($results);
     }
     
-    public function candidates(Request $request, $driveId) {
+        public function candidates(Request $request, $driveId) {
         if ($request->user()->role !== 'RECRUITER') return response()->json(['detail' => 'Unauthorized'], 403);
         $recruiter = $request->user()->recruiterProfile;
         $drive = PlacementDrive::where('id', $driveId)->where('company_id', $recruiter->company_id)->first();
@@ -43,7 +43,12 @@ class DriveController extends Controller {
                 'drive_id' => $c->drive_id,
                 'student_id' => $c->student_id,
                 'student_name' => $c->student ? $c->student->first_name . ' ' . $c->student->last_name : "Unknown",
+                'student_identifier' => $c->student ? $c->student->student_identifier : "N/A",
+                'branch' => $c->student ? $c->student->branch : "N/A",
+                'cgpa' => $c->student ? $c->student->cgpa : 0.0,
                 'status' => $c->status,
+                'eligibility_status' => ($c->status === 'ELIGIBLE' || $c->status === 'SHORTLISTED'),
+                'shortlist_status' => $c->status === 'SHORTLISTED',
                 'eligibility_score' => $c->eligibility_score,
                 'registered_at' => $c->registered_at
             ];
@@ -98,7 +103,7 @@ class DriveController extends Controller {
         return response()->json(['status' => 'success', 'candidate' => $candidate]);
     }
     
-    public function evaluate(Request $request, $driveId, EligibilityService $service) {
+        public function evaluate(Request $request, $driveId, EligibilityService $service) {
         if ($request->user()->role !== 'RECRUITER') return response()->json(['detail' => 'Unauthorized'], 403);
         $recruiter = $request->user()->recruiterProfile;
         $drive = PlacementDrive::with('job')->where('id', $driveId)->where('company_id', $recruiter->company_id)->first();
@@ -107,6 +112,10 @@ class DriveController extends Controller {
         
         $candidates = DriveCandidate::with('student')->where('drive_id', $driveId)->get();
         $evaluated = 0;
+        $eligibleCount = 0;
+        $ineligibleCount = 0;
+        $breakdown = [];
+        
         foreach ($candidates as $c) {
             $result = $service->checkHardEligibility($c->student, $drive->job);
             $c->eligibility_score = $result['is_eligible'] ? 100 : 0;
@@ -114,8 +123,28 @@ class DriveController extends Controller {
             $c->status = $result['is_eligible'] ? 'ELIGIBLE' : 'INELIGIBLE';
             $c->save();
             $evaluated++;
+            
+            if ($result['is_eligible']) {
+                $eligibleCount++;
+            } else {
+                $ineligibleCount++;
+                foreach ($result['failed_criteria'] as $reason) {
+                    if (!isset($breakdown[$reason])) {
+                        $breakdown[$reason] = 0;
+                    }
+                    $breakdown[$reason]++;
+                }
+            }
         }
-        return response()->json(['evaluated' => $evaluated]);
+        
+        return response()->json([
+            'drive_id' => $drive->id,
+            'drive_name' => $drive->name,
+            'total_candidates' => $evaluated,
+            'eligible_count' => $eligibleCount,
+            'ineligible_count' => $ineligibleCount,
+            'failure_breakdown' => $breakdown
+        ]);
     }
     
     public function withdraw(Request $request, $driveId) {
@@ -132,3 +161,4 @@ class DriveController extends Controller {
         return response()->json(['status' => 'success']);
     }
 }
+

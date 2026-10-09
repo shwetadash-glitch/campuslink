@@ -154,8 +154,7 @@ export default function OfficerStudentsPage() {
                   <th className="p-3.5">Department</th>
                   <th className="p-3.5">Academic Standing</th>
                   <th className="p-3.5">Readiness Score</th>
-                  <th className="p-3.5">Resume</th>
-                  <th className="p-3.5 text-right">Actions</th>
+                  <th className="p-3.5 text-right">Resume</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
@@ -206,30 +205,9 @@ export default function OfficerStudentsPage() {
                         </span>
                       )}
                     </td>
-                    <td className="p-3.5">
-                      {s.resume_url ? (
-                        <a
-                          href={`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8001"}${s.resume_url.replace("/api/v1", "")}`}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="text-2xs font-bold text-campusblue-700 hover:underline"
-                        >
-                          PDF &nearr;
-                        </a>
-                      ) : (
-                        <span className="text-2xs text-campusblue-200">None</span>
-                      )}
-                    </td>
                     <td className="p-3.5 text-right">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="text-2xs h-7 px-2"
-                        onClick={() => handleOpenDetail(s.id)}
-                      >
-                        Inspect Profile
-                      </Button>
-                    </td>
+                        <Button variant="outline" size="sm" className="text-2xs h-7 px-3 font-semibold" onClick={() => handleOpenDetail(s.id)}>View Resume</Button>
+                      </td>
                   </tr>
                 ))}
               </tbody>
@@ -275,6 +253,9 @@ export default function OfficerStudentsPage() {
       </AppLayout>
   );
 }
+
+
+
 
 
 

@@ -7,6 +7,10 @@ use App\Models\Student;
 use App\Http\Resources\StudentResource;
 use App\Http\Resources\FullStudentProfileResource;
 use App\Http\Resources\AcademicHistoryResource;
+use Smalot\PdfParser\Parser;
+use Illuminate\Support\Facades\Http;
+use App\Models\StudentSkill;
+use App\Models\StudentProject;
 use App\Http\Requests\Student\UpdateBasicInfoRequest;
 use App\Services\ReadinessScoringService;
 use Illuminate\Support\Facades\Storage;
@@ -77,30 +81,94 @@ class StudentController extends Controller
 
     public function uploadResume(Request $request) {
         $student = $this->getStudent($request);
-        $request->validate(['file' => 'required|file|mimes:pdf,doc,docx|max:5120']);
+        $request->validate(['file' => 'required|file|mimes:pdf|max:5120']);
         
         $file = $request->file('file');
-        $filename = 'student_' . $student->id . '_resume_' . time() . '.' . $file->getClientOriginalExtension();
-        
-        // Remove old resume if exists
-        if ($student->resume_url) {
-            $oldPath = str_replace('/api/v1/students/' . $student->id . '/resume/download', '', $student->resume_url);
-            // Wait, we need a better way to store the actual path. 
-            // In DB, let's store the route in resume_url, but where is the physical path?
-            // We can infer physical path or store it in another column, but we can't change DB schema easily.
-            // Let's just use a fixed predictable path in private storage and overwrite it.
-        }
-        
         $filename = 'student_' . $student->id . '_resume.' . $file->getClientOriginalExtension();
-        // Delete all possible extensions for this student to ensure clean replace
+        
         foreach(['pdf', 'doc', 'docx'] as $ext) {
             Storage::disk('local')->delete('resumes/student_' . $student->id . '_resume.' . $ext);
         }
 
         $path = $file->storeAs('resumes', $filename, 'local');
-        
         $student->update(['resume_url' => '/api/v1/students/' . $student->id . '/resume/download']);
-        return response()->json(['message' => 'Resume uploaded successfully', 'resume_url' => $student->resume_url]);
+
+        // Parse PDF and Extract Text
+        $pdfParser = new Parser();
+        $pdf = $pdfParser->parseFile(Storage::disk('local')->path($path));
+        $text = $pdf->getText();
+        $text = substr($text, 0, 5000); // limit to 5000 chars
+        \Illuminate\Support\Facades\Log::info('PDF Extracted Text: ' . $text);
+        if (empty(trim($text))) { \Illuminate\Support\Facades\Log::warning('No text extracted from PDF!'); }
+
+        // Send to Ollama
+        $prompt = "You are a highly accurate AI resume parser. Extract the following information from the provided resume text and format it STRICTLY as a JSON object with no markdown wrappers, no backticks, and no extra text.\nThe JSON must follow this exact schema:\n{\n  \"bio\": \"A concise 2-sentence summary of the candidate's professional objective and background.\",\n  \"cgpa\": 9.0,\n  \"skills\": [\"Python\", \"React\", \"Machine Learning\"],\n  \"projects\": [\n    { \"title\": \"Project Name\", \"description\": \"Brief project description\" }\n  ]\n}\n\nIf any data is missing from the resume, leave it as null or an empty array.\n\nRESUME TEXT:\n" . $text;
+
+        $ollamaUrl = env('OLLAMA_URL', 'http://localhost:11434');
+        $response = Http::timeout(120)->post($ollamaUrl . '/api/generate', [
+            'model' => env('OLLAMA_MODEL', 'llama3.2'),
+            'prompt' => $prompt,
+            'stream' => false,
+            'format' => 'json'
+        ]);
+
+        if ($response->successful()) {
+            $raw = $response->json('response');
+            $raw = preg_replace('/`json/', '', $raw);
+            $raw = preg_replace('/`/', '', $raw);
+            $data = json_decode(trim($raw), true);
+            \Illuminate\Support\Facades\Log::info('Ollama Parsed Data: ' . print_r($data, true));
+            if ($data) {
+                // Update Bio
+                if (isset($data['bio'])) {
+                    $meta = $student->profile_metadata ?? [];
+                    $meta['bio'] = $data['bio'];
+                    $student->update(['profile_metadata' => $meta]);
+                }
+
+                // Update CGPA
+                if (isset($data['cgpa']) && is_numeric($data['cgpa'])) {
+                    $student->update(['cgpa' => $data['cgpa']]);
+                }
+
+                // Add Skills
+                if (isset($data['skills']) && is_array($data['skills'])) {
+                    foreach ($data['skills'] as $skillName) {
+                        $masterSkill = \App\Models\MasterSkill::firstOrCreate(
+                            ['name' => strtoupper(trim($skillName))],
+                            ['category' => 'TECHNICAL', 'is_verified' => true]
+                        );
+                        StudentSkill::firstOrCreate([
+                            'student_id' => $student->id,
+                            'skill_id' => $masterSkill->id
+                        ], [
+                            'skill_name' => trim($skillName),
+                            'proficiency_level' => 'INTERMEDIATE',
+                            'is_verified' => false
+                        ]);
+                    }
+                }
+
+                // Add Projects
+                if (isset($data['projects']) && is_array($data['projects'])) {
+                    foreach ($data['projects'] as $proj) {
+                        if (isset($proj['title']) && isset($proj['description'])) {
+                            StudentProject::firstOrCreate([
+                                'student_id' => $student->id,
+                                'title' => $proj['title']
+                            ], [
+                                'description' => $proj['description']
+                            ]);
+                        }
+                    }
+                }
+
+                // Automatically recalculate the readiness score after AI fills the profile
+                $this->readinessService->calculateReadiness($student);
+            }
+        }
+
+        return response()->json(['message' => 'Resume uploaded and analyzed successfully', 'resume_url' => $student->resume_url]);
     }
 
     public function deleteResume(Request $request) {
@@ -247,3 +315,7 @@ class StudentController extends Controller
         }));
     }
 }
+
+
+
+

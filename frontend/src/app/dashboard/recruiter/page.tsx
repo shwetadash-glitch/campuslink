@@ -20,6 +20,7 @@ import { DriveModal } from "@/features/recruiters/DriveModal";
 import { EligibilitySandboxCard } from "@/features/recruiters/EligibilitySandboxCard";
 import { JobPreviewModal } from "@/features/recruiters/JobPreviewModal";
 import { CandidateManagementModal } from "@/features/recruiters/CandidateManagementModal";
+import { CandidateProfileModal } from "@/features/recruiters/CandidateProfileModal";
 
 import {
   CompanyData,
@@ -28,16 +29,17 @@ import {
   SkillItem,
   RecruiterProfile,
 } from "@/features/recruiters/types";
-import { recruitersApi, RecruiterDashboardMetrics } from "@/services/recruitersApi";
+import { recruitersApi, RecruiterDashboardMetrics, CandidateItem } from "@/services/recruitersApi";
 import { parseApiError } from "@/services/apiClient";
 
 export default function RecruiterDashboard() {
-  const [activeTab, setActiveTab] = useState<"company" | "jobs" | "drives">("company");
+  const [activeTab, setActiveTab] = useState<"company" | "jobs" | "drives" | "candidates" | "shortlisted">("company");
   const [profile, setProfile] = useState<RecruiterProfile | null>(null);
   const [jobs, setJobs] = useState<JobData[]>([]);
   const [drives, setDrives] = useState<DriveData[]>([]);
   const [skillsList, setSkillsList] = useState<SkillItem[]>([]);
   const [metrics, setMetrics] = useState<RecruiterDashboardMetrics | null>(null);
+  const [shortlisted, setShortlisted] = useState<CandidateItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -58,6 +60,7 @@ export default function RecruiterDashboard() {
   const [previewJob, setPreviewJob] = useState<JobData | null>(null);
   const [selectedDriveForCandidates, setSelectedDriveForCandidates] = useState<DriveData | null>(null);
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
+  const [viewCandidate, setViewCandidate] = useState<CandidateItem | null>(null);
 
   // Confirm delete dialog
   const [confirmDelete, setConfirmDelete] = useState<{
@@ -81,12 +84,13 @@ export default function RecruiterDashboard() {
     setLoading(true);
     setError("");
     try {
-      const [profileData, jobsData, drivesData, skillsData, metricsData] = await Promise.all([
+      const [profileData, jobsData, drivesData, skillsData, metricsData, shortlistedData] = await Promise.all([
         recruitersApi.getProfile(),
         recruitersApi.getJobs(),
         recruitersApi.getDrives(),
         recruitersApi.getSkills().catch(() => [] as SkillItem[]),
         recruitersApi.getDashboardMetrics().catch(() => null),
+          recruitersApi.getGlobalShortlisted().catch(() => []),
       ]);
 
       setProfile(profileData);
@@ -94,6 +98,7 @@ export default function RecruiterDashboard() {
       setDrives(drivesData);
       setSkillsList(skillsData);
       setMetrics(metricsData);
+        setShortlisted(shortlistedData);
     } catch (err: any) {
       const parsed = parseApiError(err);
       setError(parsed.message);
@@ -741,18 +746,58 @@ export default function RecruiterDashboard() {
                 </div>
               </div>
               <Card>
-                <div className="p-12 text-center flex flex-col items-center">
-                  <div className="w-16 h-16 bg-campusblue-50 text-campusblue-500 rounded-full flex items-center justify-center mb-4">
-                    <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                {(!shortlisted || shortlisted.length === 0) ? (
+                  <div className="p-12 text-center flex flex-col items-center">
+                    <div className="w-16 h-16 bg-campusblue-50 text-campusblue-500 rounded-full flex items-center justify-center mb-4">
+                      <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                    </div>
+                    <h3 className="text-lg font-bold text-campusblue-900 mb-2">Shortlisting Workbench</h3>
+                    <p className="text-sm text-campusblue-500 max-w-md mx-auto mb-6">
+                      You have not published any final shortlists yet. Once candidates pass the AI screening rounds or your custom eligibility filters, they will appear here for final interview scheduling and offer generation.
+                    </p>
+                    <button onClick={() => setActiveTab('jobs')} className="text-sm font-semibold text-campusblue-800 bg-campusblue-50 hover:bg-campusblue-100 font-serif px-4 py-2 rounded-lg transition">
+                      Review Job Eligibility Rules
+                    </button>
                   </div>
-                  <h3 className="text-lg font-bold text-campusblue-900 mb-2">Shortlisting Workbench</h3>
-                  <p className="text-sm text-campusblue-500 max-w-md mx-auto mb-6">
-                    You have not published any final shortlists yet. Once candidates pass the AI screening rounds or your custom eligibility filters, they will appear here for final interview scheduling and offer generation.
-                  </p>
-                  <button onClick={() => setActiveTab('jobs')} className="text-sm font-semibold text-campusblue-800 bg-campusblue-50 hover:bg-campusblue-100 font-serif px-4 py-2 rounded-lg transition">
-                    Review Job Eligibility Rules
-                  </button>
-                </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse">
+                      <thead>
+                        <tr className="bg-campusblue-50 text-campusblue-700 text-3xs uppercase tracking-wider border-b border-campusblue-100">
+                          <th className="p-3">Candidate</th>
+                          <th className="p-3">Branch & CGPA</th>
+                          <th className="p-3">Registered Drive</th>
+                          <th className="p-3">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {shortlisted.map((c) => (
+                          <tr key={c.id} className="border-b border-campusblue-50 hover:bg-[#F4F9FD] transition">
+                            <td className="p-3">
+                              <div className="font-bold text-sm text-campusblue-900">{c.student_name}</div>
+                              <div className="text-xs text-campusblue-600">ID: {c.student_identifier}</div>
+                            </td>
+                            <td className="p-3">
+                              <div className="text-sm text-campusblue-900">{c.branch}</div>
+                              <div className="text-xs text-campusblue-600">CGPA: {c.cgpa} / 10.0</div>
+                            </td>
+                            <td className="p-3 text-xs text-campusblue-700">
+                              <div className="font-medium text-campusblue-900">{c.drive_name || 'N/A'}</div>
+                              <div className="text-3xs mt-1 text-campusblue-500">
+                                {c.registration_timestamp ? new Date(c.registration_timestamp).toLocaleDateString() : ''}
+                              </div>
+                            </td>
+                            <td className="p-3">
+                              <Button size="sm" variant="outline" onClick={() => setViewCandidate(c)}>
+                                View Profile
+                              </Button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
               </Card>
             </div>
           )}
@@ -811,6 +856,12 @@ export default function RecruiterDashboard() {
         companyName={profile?.company?.name}
       />
 
+      <CandidateProfileModal
+        isOpen={viewCandidate !== null}
+        onClose={() => setViewCandidate(null)}
+        studentId={viewCandidate?.student_id || null}
+      />
+
       <CandidateManagementModal
         isOpen={selectedDriveForCandidates !== null}
         onClose={() => {
@@ -822,6 +873,11 @@ export default function RecruiterDashboard() {
     </AppLayout>
   );
 }
+
+
+
+
+
 
 
 

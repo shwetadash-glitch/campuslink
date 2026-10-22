@@ -43,6 +43,24 @@ backend/uploads/
 # Misc logs
 *.log
 
-# Laravel
-backend-laravel/.env*
-!backend-laravel/.env.example
+# Environment files
+.env
+.env.*
+.env-*
+!.env.example
+!.env.*.example
+
+# Database backups and dumps
+*.sql
+*.dump
+*.backup
+*.bak
+
+# Temporary backup scripts
+backup-campuslink.php
+
+# Neon configuration
+.neon
+
+# Dependencies and generated files
+node_modules/

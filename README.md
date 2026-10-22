@@ -12,9 +12,10 @@ This platform bridges the gap between students, recruiters, and placement office
 - **Skill-Gap Analysis**: Job-specific skill gap analysis comparing a student's verified skills against a job's requirements.
 
 ## Tech Stack
-- **Frontend**: Next.js 14, React, Tailwind CSS, TypeScript
-- **Backend**: FastAPI, Python 3.10+, SQLAlchemy, Pydantic, Alembic
-- **Database**: SQLite (default for local testing), PostgreSQL (Production ready)
+- **Frontend**: Next.js 15, React 19, Tailwind CSS, TypeScript (`frontend/`)
+- **Backend (Active)**: Laravel 13 REST API, PHP 8.2+, Sanctum, Eloquent (`backend-laravel/`)
+- **Backend (Legacy / Deprecated)**: FastAPI, Python 3.10+, SQLAlchemy, Alembic (`backend/` - superseded by Laravel)
+- **Database**: PostgreSQL (Neon Serverless for Production; Docker for local dev) / SQLite (tests)
 
 ---
 
@@ -24,19 +25,48 @@ Follow these instructions to set up the project locally on your system.
 
 ### Prerequisites
 - [Node.js](https://nodejs.org/en/) (v18+ recommended)
-- [Python](https://www.python.org/downloads/) (v3.10+ recommended)
+- [PHP](https://www.php.net/) (v8.2+ recommended) & [Composer](https://getcomposer.org/)
+- [Python](https://www.python.org/downloads/) (v3.10+, for legacy backend and utility scripts)
 - [Git](https://git-scm.com/)
 
 ### 1. Clone the Repository
 ```bash
-git clone https://github.com/binsab777/campuselink.git
+git clone https://github.com/shwetadash-glitch/campuslink.git
 cd campuslink
 ```
 
-### 2. Backend Setup
-The backend is built with FastAPI.
+### 2. Active Backend Setup (Laravel)
+The primary backend is built with Laravel 13 (`backend-laravel/`).
 
-1. **Navigate to the backend directory**:
+1. **Navigate to the Laravel backend directory**:
+   ```bash
+   cd backend-laravel
+   ```
+2. **Install PHP Dependencies**:
+   ```bash
+   composer install
+   ```
+3. **Configure Environment Variables**:
+   Copy the example environment configuration and generate the application key:
+   ```bash
+   cp .env.example .env
+   php artisan key:generate
+   ```
+   *Configure your PostgreSQL database connection parameters in `.env` (`DB_CONNECTION=pgsql`, `DB_HOST`, `DB_PORT`, `DB_DATABASE`, `DB_USERNAME`, `DB_PASSWORD`).*
+4. **Run Database Migrations**:
+   ```bash
+   php artisan migrate
+   ```
+5. **Start the Laravel Development Server**:
+   ```bash
+   php artisan serve --port 8000
+   ```
+   *The API will be available at `http://localhost:8000`.*
+
+### 2b. Legacy Backend Setup (FastAPI - Deprecated / Inactive)
+> **Note:** The Python FastAPI backend located in `backend/` is deprecated and has been superseded by `backend-laravel/`. It is retained solely for historical migration reference and tests.
+
+1. **Navigate to the legacy backend directory**:
    ```bash
    cd backend
    ```
@@ -61,18 +91,18 @@ The backend is built with FastAPI.
    pip install -r requirements.txt
    ```
 5. **Set up Environment Variables**:
-   Create a `.env` file in the `backend` directory (optional for SQLite, but recommended):
+   Create a `.env` file in the `backend` directory (optional for SQLite):
    ```env
-   AUTH_JWT_SECRET="your-super-secret-key"
+   AUTH_JWT_SECRET="your-development-jwt-secret"
    AUTH_JWT_ALGORITHM="HS256"
    # To use Postgres instead of default SQLite, add:
-   # DATABASE_URL="postgresql://user:password@localhost:5432/campuslink_db"
+   # DATABASE_URL="postgresql://${LOCAL_DB_USER}:${LOCAL_DB_PASSWORD}@localhost:5432/${LOCAL_DB_NAME}"
    ```
-6. **Run Database Migrations**:
+6. **Run Database Migrations (Legacy)**:
    ```bash
    alembic upgrade head
    ```
-7. **Start the Backend Server**:
+7. **Start the Legacy Backend Server**:
    ```bash
    fastapi dev src/main.py
    # Or alternatively: python -m uvicorn src.main:app --reload --port 8000

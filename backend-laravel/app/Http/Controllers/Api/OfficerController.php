@@ -125,8 +125,8 @@ class OfficerController extends Controller {
             ];
         }
 
-        $ollamaUrl = env('OLLAMA_URL');
-        $ollamaModel = env('OLLAMA_MODEL', 'llama3.2');
+        $ollamaUrl = config('services.ollama.url');
+        $ollamaModel = config('services.ollama.model', 'llama3.2');
 
         if ($ollamaUrl) {
             $chunks = array_chunk($results, 1, true);

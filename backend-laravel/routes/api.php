@@ -132,9 +132,9 @@ Route::prefix('v1')->group(function () {
 
 Route::get('/ollama-test', function () {
     $response = Http::timeout(120)->post(
-        env('OLLAMA_URL') . '/api/generate',
+        config('services.ollama.url', 'http://localhost:11434') . '/api/generate',
         [
-            'model' => env('OLLAMA_MODEL', 'llama3.2'),
+            'model' => config('services.ollama.model', 'llama3.2'),
             'prompt' => 'Give me one interview question for a computer science student.',
             'stream' => false,
         ]

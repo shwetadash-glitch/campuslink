@@ -47,13 +47,20 @@ The primary backend is built with Laravel 13 (`backend-laravel/`).
    composer install
    ```
 3. **Configure Environment Variables**:
-   Copy the example environment configuration and generate the application key:
+   Copy the example environment template and generate a local application key:
    ```bash
    cp .env.example .env
    php artisan key:generate
    ```
-   *Configure your PostgreSQL database connection parameters in `.env` (`DB_CONNECTION=pgsql`, `DB_HOST`, `DB_PORT`, `DB_DATABASE`, `DB_USERNAME`, `DB_PASSWORD`).*
-4. **Run Database Migrations**:
+4. **Start Local Database & Run Migrations**:
+   For local containerized PostgreSQL, start the database service from the repository root:
+   ```bash
+   # From repository root:
+   docker compose up -d db
+   ```
+   *(The template in `.env.example` pre-configures connection settings matching the local Docker Compose defaults. These defaults are strictly for local development and must never be used in production).*
+
+   Then run database migrations from `backend-laravel/`:
    ```bash
    php artisan migrate
    ```

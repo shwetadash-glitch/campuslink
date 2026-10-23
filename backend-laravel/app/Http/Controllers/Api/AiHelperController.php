@@ -60,8 +60,8 @@ class AiHelperController extends Controller
             ];
         }
 
-        $url = env('OLLAMA_URL') . '/api/chat';
-        $model = env('OLLAMA_MODEL', 'llama3.2');
+        $url = config('services.ollama.url', 'http://localhost:11434') . '/api/chat';
+        $model = config('services.ollama.model', 'llama3.2');
 
         try {
             $response = Http::timeout(120)->post($url, [

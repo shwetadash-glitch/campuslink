@@ -104,9 +104,9 @@ class StudentController extends Controller
         // Send to Ollama
         $prompt = "You are a highly accurate AI resume parser. Extract the following information from the provided resume text and format it STRICTLY as a JSON object with no markdown wrappers, no backticks, and no extra text.\nThe JSON must follow this exact schema:\n{\n  \"bio\": \"A concise 2-sentence summary of the candidate's professional objective and background.\",\n  \"cgpa\": 9.0,\n  \"skills\": [\"Python\", \"React\", \"Machine Learning\"],\n  \"projects\": [\n    { \"title\": \"Project Name\", \"description\": \"Brief project description\" }\n  ]\n}\n\nIf any data is missing from the resume, leave it as null or an empty array.\n\nRESUME TEXT:\n" . $text;
 
-        $ollamaUrl = env('OLLAMA_URL', 'http://localhost:11434');
+        $ollamaUrl = config('services.ollama.url', 'http://localhost:11434');
         $response = Http::timeout(120)->post($ollamaUrl . '/api/generate', [
-            'model' => env('OLLAMA_MODEL', 'llama3.2'),
+            'model' => config('services.ollama.model', 'llama3.2'),
             'prompt' => $prompt,
             'stream' => false,
             'format' => 'json'

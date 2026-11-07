@@ -1,0 +1,136 @@
+services:
+  # 1. Main Application Web API (Nginx + PHP-FPM)
+  - type: web
+    name: campuslink-api
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    region: singapore
+    plan: starter
+    dockerCommand: web
+    healthCheckPath: /up
+    envVars:
+      - key: APP_NAME
+        value: CampusLink
+      - key: APP_ENV
+        value: production
+      - key: APP_DEBUG
+        value: "false"
+      - key: APP_URL
+        sync: false
+      - key: APP_KEY
+        generateValue: true
+      # Neon Database Connection (Pooled)
+      - key: DB_CONNECTION
+        value: pgsql
+      - key: DB_HOST
+        value: ep-fragrant-pine-a7o093p1-pooler.ap-southeast-2.aws.neon.tech
+      - key: DB_PORT
+        value: "5432"
+      - key: DB_DATABASE
+        value: neondb
+      - key: DB_USERNAME
+        value: neondb_owner
+      - key: DB_PASSWORD
+        sync: false
+      - key: DB_SSLMODE
+        value: require
+      # Unpooled Endpoint for Migrations / Backups
+      - key: DB_HOST_UNPOOLED
+        value: ep-fragrant-pine-a7o093p1.ap-southeast-2.aws.neon.tech
+      # CORS Allowed Origins
+      - key: CORS_ALLOWED_ORIGINS
+        value: https://campuslink.vercel.app
+      # Application Drivers
+      - key: QUEUE_CONNECTION
+        value: database
+      - key: CACHE_STORE
+        value: database
+      - key: SESSION_DRIVER
+        value: database
+      # AI Provider Settings (Configured for Production)
+      - key: AI_PROVIDER
+        value: ollama
+      - key: OLLAMA_URL
+        sync: false
+      - key: OLLAMA_MODEL
+        value: llama3.2
+      - key: AI_TIMEOUT_SECONDS
+        value: "10"
+
+  # 2. Background Queue Worker (Notifications & Async Processing)
+  - type: worker
+    name: campuslink-worker
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    region: singapore
+    plan: starter
+    dockerCommand: worker
+    envVars:
+      - key: APP_NAME
+        value: CampusLink
+      - key: APP_ENV
+        value: production
+      - key: APP_KEY
+        fromService:
+          name: campuslink-api
+          type: web
+          envVarKey: APP_KEY
+      - key: DB_CONNECTION
+        value: pgsql
+      - key: DB_HOST
+        value: ep-fragrant-pine-a7o093p1-pooler.ap-southeast-2.aws.neon.tech
+      - key: DB_PORT
+        value: "5432"
+      - key: DB_DATABASE
+        value: neondb
+      - key: DB_USERNAME
+        value: neondb_owner
+      - key: DB_PASSWORD
+        fromService:
+          name: campuslink-api
+          type: web
+          envVarKey: DB_PASSWORD
+      - key: DB_SSLMODE
+        value: require
+      - key: QUEUE_CONNECTION
+        value: database
+
+  # 3. Scheduled Tasks (Native Render Cron)
+  - type: cron
+    name: campuslink-cron
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    region: singapore
+    plan: starter
+    schedule: "* * * * *"
+    dockerCommand: cron
+    envVars:
+      - key: APP_NAME
+        value: CampusLink
+      - key: APP_ENV
+        value: production
+      - key: APP_KEY
+        fromService:
+          name: campuslink-api
+          type: web
+          envVarKey: APP_KEY
+      - key: DB_CONNECTION
+        value: pgsql
+      - key: DB_HOST
+        value: ep-fragrant-pine-a7o093p1-pooler.ap-southeast-2.aws.neon.tech
+      - key: DB_PORT
+        value: "5432"
+      - key: DB_DATABASE
+        value: neondb
+      - key: DB_USERNAME
+        value: neondb_owner
+      - key: DB_PASSWORD
+        fromService:
+          name: campuslink-api
+          type: web
+          envVarKey: DB_PASSWORD
+      - key: DB_SSLMODE
+        value: require

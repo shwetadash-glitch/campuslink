@@ -1,9 +1,10 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { EmptyState } from "@/components/feedback/EmptyState";
+import { adminApi } from "@/services/adminApi";
 
 const MOCK_DRIVES = [
   { id: 1, name: "TechCorp Campus Drive 2026", company: "TechCorp", role: "Software Engineer", type: "ON_CAMPUS", status: "active", date: "Oct 15, 2026", candidates: 145 },
@@ -16,8 +17,31 @@ const MOCK_DRIVES = [
 export default function DriveManagerPage() {
   const [activeTab, setActiveTab] = useState("active");
   const [managingDrive, setManagingDrive] = useState<any>(null);
+  const [drives, setDrives] = useState<any[]>(MOCK_DRIVES);
 
-  const filteredDrives = MOCK_DRIVES.filter(d => d.status === activeTab);
+  useEffect(() => {
+    let isMounted = true;
+    adminApi.getDrives().then((apiDrives) => {
+      if (isMounted && Array.isArray(apiDrives) && apiDrives.length > 0) {
+        const mapped = apiDrives.map(d => ({
+          id: d.id,
+          name: d.name,
+          company: d.company_name,
+          role: d.job_title || 'Software Engineer',
+          type: d.drive_type || 'ON_CAMPUS',
+          status: d.status === 'PUBLISHED' || d.status === 'IN_PROGRESS' || d.status === 'REGISTRATION_OPEN' ? 'active' : (d.status === 'DRAFT' ? 'drafts' : 'completed'),
+          date: d.date || 'TBD',
+          candidates: d.candidates_count || 0
+        }));
+        setDrives(mapped);
+      }
+    }).catch(() => {
+      // Retain fallback
+    });
+    return () => { isMounted = false; };
+  }, []);
+
+  const filteredDrives = drives.filter(d => d.status === activeTab);
 
   return (
     <AppLayout allowedRoles={["PLACEMENT_OFFICER", "SUPER_ADMIN"]}>

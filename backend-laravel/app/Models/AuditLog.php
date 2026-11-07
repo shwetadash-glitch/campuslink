@@ -16,4 +16,15 @@ class AuditLog extends Model {
     ];
 
     public function user() { return $this->belongsTo(User::class); }
+
+    protected static function booted()
+    {
+        static::updating(function () {
+            throw new \RuntimeException("Audit records are immutable and cannot be updated.");
+        });
+
+        static::deleting(function () {
+            throw new \RuntimeException("Audit records are immutable and cannot be deleted.");
+        });
+    }
 }

@@ -110,4 +110,121 @@ export const studentsApi = {
     apiClient.post<{ message: string; drive_id: number }>(
       `/api/v1/drives/${driveId}/withdraw`
     ),
+
+  // Milestone 3: Student Placement Journey
+  getPlacementDashboard: () =>
+    apiClient.get<{
+      status: string;
+      student: {
+        id: number;
+        student_identifier: string;
+        first_name: string;
+        last_name: string;
+        branch: string;
+        cgpa: number;
+        backlogs_current: number;
+        graduation_year: number;
+      };
+      placement_summary: {
+        overall_status: string;
+        registered_drives_count: number;
+        active_interviews_count: number;
+        pending_offers_count: number;
+        accepted_offers_count: number;
+      };
+      action_items: Array<{
+        type: string;
+        priority: string;
+        title: string;
+        description: string;
+        offer_id?: number;
+        start_time?: string;
+        venue?: string;
+      }>;
+      upcoming_schedules: any[];
+      active_applications: Array<{
+        candidate_id: number;
+        drive_id: number;
+        drive_name: string;
+        company_name: string;
+        job_title: string;
+        current_status: string;
+        current_round_number: number;
+        round_results: any;
+        registered_at: string;
+        status_history: Array<{
+          from: string | null;
+          to: string;
+          reason: string | null;
+          timestamp: string;
+        }>;
+      }>;
+      offers: any[];
+    }>("/api/v1/students/me/placement-dashboard"),
+
+  getJourneyAvailableDrives: () =>
+    apiClient.get<{
+      status: string;
+      drives: Array<{
+        drive_id: number;
+        drive_name: string;
+        company_name: string;
+        company_id: number;
+        job_id: number;
+        job_title: string;
+        start_date: string | null;
+        end_date: string | null;
+        venue: string | null;
+        drive_type: string;
+        drive_status: string;
+        registration_deadline: string | null;
+        is_eligible: boolean;
+        eligibility_reasons: string[];
+        is_registered: boolean;
+        candidate_status: string | null;
+        candidate_id: number | null;
+        can_register: boolean;
+      }>;
+    }>("/api/v1/students/me/available-drives"),
+
+  registerForDriveJourney: (driveId: number) =>
+    apiClient.post<{
+      status: string;
+      message: string;
+      candidate: any;
+    }>(`/api/v1/students/me/drives/${driveId}/register`, {}),
+
+  withdrawFromDriveJourney: (driveId: number, reason?: string) =>
+    apiClient.post<{
+      status: string;
+      message: string;
+      candidate: any;
+    }>(`/api/v1/students/me/drives/${driveId}/withdraw`, { reason }),
+
+  getOffers: () =>
+    apiClient.get<{
+      status: string;
+      offers: any[];
+    }>("/api/v1/students/me/offers"),
+
+  acceptOffer: (offerId: number, notes?: string) =>
+    apiClient.post<{
+      status: string;
+      message: string;
+      offer: any;
+    }>(`/api/v1/students/me/offers/${offerId}/accept`, { notes }),
+
+  rejectOffer: (offerId: number, rejection_reason: string) =>
+    apiClient.post<{
+      status: string;
+      message: string;
+      offer: any;
+    }>(`/api/v1/students/me/offers/${offerId}/reject`, { rejection_reason }),
+
+  confirmJoining: (offerId: number, joining_date?: string, notes?: string) =>
+    apiClient.post<{
+      status: string;
+      message: string;
+      offer: any;
+    }>(`/api/v1/students/me/offers/${offerId}/confirm-joining`, { joining_date, notes }),
 };

@@ -63,6 +63,30 @@ export default function DashboardPage() {
                 <p className="text-xs text-campusblue-500 leading-relaxed mb-4">Browse published placement openings, check your real-time deterministic eligibility, and register for campus interview drives.</p>
                 <span className="text-xs font-semibold text-campusblue-700 group-hover:translate-x-1 inline-flex items-center gap-1 transition-transform"><span>Browse Opportunities</span><span>&rarr;</span></span>
               </Link>
+              <Link href="/dashboard/student-journey" className="group block p-6 bg-white border border-campusblue-100 rounded-xl hover:border-campusblue-500 hover:shadow-lg transition duration-200">
+                <div className="w-12 h-12 mb-4 rounded-xl bg-campusblue-50 flex items-center justify-center text-campusblue-700 group-hover:bg-campusblue-700 group-hover:text-white transition">
+                  <span className="text-2xl">🚀</span>
+                </div>
+                <h3 className="text-base font-bold text-campusblue-900 group-hover:text-campusblue-700 transition mb-1">Placement Journey & Offers</h3>
+                <p className="text-xs text-campusblue-500 leading-relaxed mb-4">Unified candidate dashboard, live interview rounds, offer acceptance/rejection, joining confirmations, and application history.</p>
+                <span className="text-xs font-semibold text-campusblue-700 group-hover:translate-x-1 inline-flex items-center gap-1 transition-transform"><span>View Placement Journey</span><span>&rarr;</span></span>
+              </Link>
+              <Link href="/dashboard/resumes" className="group block p-6 bg-white border border-campusblue-100 rounded-xl hover:border-campusblue-500 hover:shadow-lg transition duration-200">
+                <div className="w-12 h-12 mb-4 rounded-xl bg-campusblue-50 flex items-center justify-center text-campusblue-700 group-hover:bg-campusblue-700 group-hover:text-white transition">
+                  <span className="text-2xl">📝</span>
+                </div>
+                <h3 className="text-base font-bold text-campusblue-900 group-hover:text-campusblue-700 transition mb-1">AI Resume Builder & Tailoring</h3>
+                <p className="text-xs text-campusblue-500 leading-relaxed mb-4">Grounded summary generation, project impact enhancement, job description tailoring, ATS quality audit, and verified PDF export.</p>
+                <span className="text-xs font-semibold text-campusblue-700 group-hover:translate-x-1 inline-flex items-center gap-1 transition-transform"><span>Build Tailored Resume</span><span>&rarr;</span></span>
+              </Link>
+              <Link href="/dashboard/assessments" className="group block p-6 bg-white border border-campusblue-100 rounded-xl hover:border-campusblue-500 hover:shadow-lg transition duration-200">
+                <div className="w-12 h-12 mb-4 rounded-xl bg-campusblue-50 flex items-center justify-center text-campusblue-700 group-hover:bg-campusblue-700 group-hover:text-white transition">
+                  <span className="text-2xl">✍️</span>
+                </div>
+                <h3 className="text-base font-bold text-campusblue-900 group-hover:text-campusblue-700 transition mb-1">Online Assessments & Sandbox</h3>
+                <p className="text-xs text-campusblue-500 leading-relaxed mb-4">Secure, time-limited examinations, coding sandboxes, aptitude tests, objective scoring, and performance analytics.</p>
+                <span className="text-xs font-semibold text-campusblue-700 group-hover:translate-x-1 inline-flex items-center gap-1 transition-transform"><span>Take Assessment</span><span>&rarr;</span></span>
+              </Link>
               <Link href="/dashboard/messages" className="group block p-6 bg-white border border-campusblue-100 rounded-xl hover:border-campusblue-500 hover:shadow-lg transition duration-200">
                   <div className="w-12 h-12 mb-4 rounded-xl bg-campusblue-50 flex items-center justify-center text-campusblue-600 group-hover:bg-campusblue-600 group-hover:text-white transition">
                     <span className="text-2xl">ðŸ’¬</span>
@@ -78,6 +102,14 @@ export default function DashboardPage() {
                   <h3 className="text-base font-bold text-campusblue-900 group-hover:text-campusblue-600 transition mb-1">AI Mock Interview</h3>
                   <p className="text-xs text-campusblue-500 leading-relaxed mb-4">Practice technical questions with our AI Helper. Get instant feedback and study references.</p>
                   <span className="text-xs font-semibold text-campusblue-600 group-hover:translate-x-1 inline-flex items-center gap-1 transition-transform"><span>Start Practice</span><span>&rarr;</span></span>
+                </Link>
+                <Link href="/dashboard/communication-coach" className="group block p-6 bg-white border border-campusblue-100 rounded-xl hover:border-campusblue-500 hover:shadow-lg transition duration-200">
+                  <div className="w-12 h-12 mb-4 rounded-xl bg-campusblue-50 flex items-center justify-center text-campusblue-700 group-hover:bg-campusblue-700 group-hover:text-white transition">
+                    <span className="text-2xl">🗣️</span>
+                  </div>
+                  <h3 className="text-base font-bold text-campusblue-900 group-hover:text-campusblue-700 transition mb-1">AI Communication Coach</h3>
+                  <p className="text-xs text-campusblue-500 leading-relaxed mb-4">Master professional email writing, HR interviews, technical explanations, and structured speaking with 7-dimension AI feedback.</p>
+                  <span className="text-xs font-semibold text-campusblue-700 group-hover:translate-x-1 inline-flex items-center gap-1 transition-transform"><span>Practice Communication</span><span>&rarr;</span></span>
                 </Link>
                 <Link href="/dashboard/readiness" className="group block p-6 bg-white border border-campusblue-100 rounded-lg hover:border-campusblue-300 hover:shadow-md hover:-translate-y-1 transition duration-200">
                 <div className="w-12 h-12 mb-4 rounded-xl bg-campusblue-50 flex items-center justify-center text-campusblue-700 group-hover:bg-campusblue-700 group-hover:text-white transition">

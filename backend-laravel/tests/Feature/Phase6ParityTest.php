@@ -24,7 +24,8 @@ class Phase6ParityTest extends TestCase {
         $response = $this->actingAs($user)->getJson("/api/v1/readiness/me/jobs/{$job->id}/skill-gaps");
         $response->assertStatus(200);
         $data = $response->json();
-        $this->assertEquals('CRITICAL', $data[0]['gap_severity']); // since mandatory and student has 0
+        $gaps = $data['gaps'] ?? $data;
+        $this->assertEquals('CRITICAL', $gaps[0]['gap_severity']); // since mandatory and student has 0
         
         // Eligibility - Student has 8.0 > 7.5
         $resp2 = $this->actingAs($user)->getJson("/api/v1/jobs/{$job->id}/my-eligibility");

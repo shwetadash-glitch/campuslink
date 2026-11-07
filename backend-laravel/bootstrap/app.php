@@ -21,4 +21,13 @@ return Application::configure(basePath: dirname(__DIR__))
         $exceptions->shouldRenderJsonWhen(
             fn (Request $request) => $request->is('api/*') || $request->expectsJson(),
         );
+
+        $exceptions->render(function (\App\Exceptions\AiServiceUnavailableException $e, Request $request) {
+            return response()->json([
+                'status' => 'error',
+                'code' => 'AI_SERVICE_UNAVAILABLE',
+                'message' => $e->getMessage() ?: 'The AI service is temporarily unavailable. Core operations remain fully functional.',
+                'retry_after' => $e->getRetryAfter(),
+            ], 503);
+        });
     })->create();

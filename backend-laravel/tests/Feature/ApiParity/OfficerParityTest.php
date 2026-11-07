@@ -27,7 +27,7 @@ class OfficerParityTest extends TestCase {
         $officer = User::create(['email' => 'o@t.com', 'password_hash' => 'x', 'role' => UserRole::PLACEMENT_OFFICER->value]);
         Company::create(['name' => 'C1', 'industry' => 'Tech']);
         
-        $this->actingAs($officer)->getJson('/api/v1/officer/companies')->assertStatus(200)->assertJsonPath('total', 1);
+        $this->actingAs($officer)->getJson('/api/v1/officer/companies')->assertStatus(200)->assertJsonCount(1);
         
         $res = $this->actingAs($officer)->postJson('/api/v1/officer/companies', ['name' => 'C2', 'industry' => 'Fin']);
         $res->assertStatus(201);

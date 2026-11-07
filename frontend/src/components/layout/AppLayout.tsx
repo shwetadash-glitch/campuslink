@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import { AiNavigator } from "@/components/AiNavigator";
+import { NotificationBell } from "./NotificationBell";
 import { StatusBadge } from "../ui/StatusBadge";
 import { Button } from "../ui/Button";
 
@@ -23,6 +24,10 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children, allowedRoles = [
     // Student links
     { href: "/dashboard/profile", label: "My Profile", roles: ["STUDENT"] },
     { href: "/dashboard/jobs", label: "Jobs & Drives", roles: ["STUDENT"] },
+    { href: "/dashboard/student-journey", label: "Placement Journey", roles: ["STUDENT"] },
+    { href: "/dashboard/resumes", label: "AI Resume Builder", roles: ["STUDENT"] },
+    { href: "/dashboard/assessments", label: "Assessments", roles: ["STUDENT", "PLACEMENT_OFFICER", "SUPER_ADMIN"] },
+    { href: "/dashboard/communication-coach", label: "Communication Coach", roles: ["STUDENT"] },
     { href: "/dashboard/readiness", label: "Readiness & Gaps", roles: ["STUDENT"] },
     
     // Recruiter link
@@ -40,6 +45,7 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children, allowedRoles = [
     { href: "/dashboard/tpo/shortlisting", label: "AI Shortlisting Console", roles: ["PLACEMENT_OFFICER"] },
     { href: "/dashboard/tpo/scheduler", label: "Conflict-Free Scheduler", roles: ["PLACEMENT_OFFICER"] },
     { href: "/dashboard/tpo/offer-desk", label: "Offer Verification Desk", roles: ["PLACEMENT_OFFICER"] },
+    { href: "/dashboard/tpo/analytics", label: "Institutional Analytics", roles: ["PLACEMENT_OFFICER", "SUPER_ADMIN"] },
     { href: "/dashboard/tpo/at-risk", label: "Cohort & At-Risk Center", roles: ["PLACEMENT_OFFICER"] },
   ];
 
@@ -81,6 +87,7 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children, allowedRoles = [
 
               {/* User profile & Logout */}
               <div className="flex items-center gap-4">
+                {user && <NotificationBell />}
                 {user && (
                   <div className="hidden sm:flex flex-col text-right">
                     <span className="text-xs font-semibold text-white">{user.email}</span>

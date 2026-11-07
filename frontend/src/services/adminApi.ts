@@ -69,7 +69,6 @@ export interface OfficerCompanyItem {
   drives_count: number;
 }
 
-
 export interface ShortlistCandidate {
   student_id: number;
   student_identifier: string;
@@ -173,4 +172,88 @@ export const adminApi = {
     headquarters?: string;
     description?: string;
   }) => apiClient.post<OfficerCompanyItem>("/api/v1/officer/companies", data),
+
+  // Milestone 2: Placement Drive Management & Conflict Engine
+  getDrives: (status?: string) => {
+    const q = status && status !== "ALL" ? `?status=${encodeURIComponent(status)}` : "";
+    return apiClient.get<any[]>(`/api/v1/tpo/drives${q}`);
+  },
+
+  getDrive: (id: number) => apiClient.get<any>(`/api/v1/tpo/drives/${id}`),
+
+  createDrive: (data: {
+    name: string;
+    company_id: number;
+    job_id: number;
+    start_date: string;
+    end_date: string;
+    drive_type?: string;
+    venue?: string;
+    capacity?: number;
+    branches?: string[];
+    force?: boolean;
+    override_justification?: string;
+  }) => apiClient.post<any>("/api/v1/tpo/drives", data),
+
+  updateDrive: (id: number, data: {
+    lock_version: number;
+    name?: string;
+    status?: string;
+    start_date?: string;
+    end_date?: string;
+    venue?: string;
+    capacity?: number;
+  }) => apiClient.put<any>(`/api/v1/tpo/drives/${id}`, data),
+
+  addDriveRound: (driveId: number, data: {
+    round_number: number;
+    name: string;
+    round_type: string;
+    start_time: string;
+    end_time: string;
+    venue?: string;
+    capacity?: number;
+    instructions?: string;
+    force?: boolean;
+    override_justification?: string;
+  }) => apiClient.post<any>(`/api/v1/tpo/drives/${driveId}/rounds`, data),
+
+  detectConflicts: (data: {
+    start_time: string;
+    end_time: string;
+    venue?: string;
+    venue_id?: number;
+    branches?: string[];
+    drive_id?: number;
+  }) => apiClient.post<any>("/api/v1/tpo/detect-conflicts", data),
+
+  transitionCandidate: (driveId: number, candidateId: number, data: {
+    new_status: string;
+    reason?: string;
+  }) => apiClient.post<any>(`/api/v1/tpo/drives/${driveId}/transition-candidate/${candidateId}`, data),
+
+  getCandidateHistories: (driveId: number) =>
+    apiClient.get<any[]>(`/api/v1/tpo/drives/${driveId}/candidate-histories`),
+
+  getSchedulerEvents: (startDate?: string, endDate?: string) => {
+    const params = new URLSearchParams();
+    if (startDate) params.append("start_date", startDate);
+    if (endDate) params.append("end_date", endDate);
+    return apiClient.get<any[]>(`/api/v1/tpo/scheduler/events?${params.toString()}`);
+  },
+
+  getVenues: () => apiClient.get<any[]>("/api/v1/tpo/venues"),
+  createVenue: (data: { name: string; building?: string; capacity?: number; is_virtual?: boolean }) =>
+    apiClient.post<any>("/api/v1/tpo/venues", data),
+
+  getInstitutionalEvents: () => apiClient.get<any[]>("/api/v1/tpo/institutional-events"),
+  createInstitutionalEvent: (data: {
+    title: string;
+    event_type: string;
+    start_time: string;
+    end_time: string;
+    affects_branches?: string[];
+    is_hard_blackout?: boolean;
+    notes?: string;
+  }) => apiClient.post<any>("/api/v1/tpo/institutional-events", data),
 };

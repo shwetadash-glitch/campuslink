@@ -64,3 +64,4 @@ backup-campuslink.php
 
 # Dependencies and generated files
 node_modules/
+scratch/

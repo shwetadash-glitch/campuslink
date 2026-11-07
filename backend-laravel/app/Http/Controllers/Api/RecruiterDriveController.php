@@ -36,8 +36,13 @@ class RecruiterDriveController extends Controller {
             return response()->json(['detail' => 'Invalid job ID: Job does not exist or does not belong to your company'], 400);
         }
 
-        $startDate = Carbon::parse($validated['date'] . ' ' . $validated['start_time']);
-        $endDate = Carbon::parse($validated['date'] . ' ' . $validated['end_time']);
+        $startDate = (str_contains($validated['start_time'], ' ') || str_contains($validated['start_time'], '-'))
+            ? Carbon::parse($validated['start_time'])
+            : Carbon::parse($validated['date'] . ' ' . $validated['start_time']);
+
+        $endDate = (str_contains($validated['end_time'], ' ') || str_contains($validated['end_time'], '-'))
+            ? Carbon::parse($validated['end_time'])
+            : Carbon::parse($validated['date'] . ' ' . $validated['end_time']);
 
         $drive = $request->user()->recruiterProfile->company->drives()->create([
             'name' => $validated['name'],

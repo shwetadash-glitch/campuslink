@@ -94,31 +94,30 @@ class StudentController extends Controller
         $student->update(['resume_url' => '/api/v1/students/' . $student->id . '/resume/download']);
 
         // Parse PDF and Extract Text
-        $pdfParser = new Parser();
-        $pdf = $pdfParser->parseFile(Storage::disk('local')->path($path));
-        $text = $pdf->getText();
-        $text = substr($text, 0, 5000); // limit to 5000 chars
-        \Illuminate\Support\Facades\Log::info('PDF Extracted Text: ' . $text);
-        if (empty(trim($text))) { \Illuminate\Support\Facades\Log::warning('No text extracted from PDF!'); }
+        $text = '';
+        try {
+            $pdfParser = new Parser();
+            $pdf = $pdfParser->parseFile(Storage::disk('local')->path($path));
+            $text = substr($pdf->getText(), 0, 5000);
+            \Illuminate\Support\Facades\Log::info('PDF Extracted Text: ' . $text);
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::warning('Resume PDF text extraction skipped: ' . $e->getMessage());
+        }
 
-        // Send to Ollama
+        // Send to AI for resume parsing using AiManager
         $prompt = "You are a highly accurate AI resume parser. Extract the following information from the provided resume text and format it STRICTLY as a JSON object with no markdown wrappers, no backticks, and no extra text.\nThe JSON must follow this exact schema:\n{\n  \"bio\": \"A concise 2-sentence summary of the candidate's professional objective and background.\",\n  \"cgpa\": 9.0,\n  \"skills\": [\"Python\", \"React\", \"Machine Learning\"],\n  \"projects\": [\n    { \"title\": \"Project Name\", \"description\": \"Brief project description\" }\n  ]\n}\n\nIf any data is missing from the resume, leave it as null or an empty array.\n\nRESUME TEXT:\n" . $text;
 
-        $ollamaUrl = config('services.ollama.url', 'http://localhost:11434');
-        $response = Http::timeout(120)->post($ollamaUrl . '/api/generate', [
-            'model' => config('services.ollama.model', 'llama3.2'),
-            'prompt' => $prompt,
-            'stream' => false,
-            'format' => 'json'
-        ]);
+        try {
+            $aiManager = app(\App\Services\AI\AiManager::class);
+            $data = $aiManager->generate($prompt, ['type' => 'object']);
+            if (is_string($data)) {
+                $raw = preg_replace('/```json/', '', $data);
+                $raw = preg_replace('/```/', '', $raw);
+                $data = json_decode(trim($raw), true);
+            }
+            \Illuminate\Support\Facades\Log::info('AI Resume Parsed Data: ' . print_r($data, true));
 
-        if ($response->successful()) {
-            $raw = $response->json('response');
-            $raw = preg_replace('/`json/', '', $raw);
-            $raw = preg_replace('/`/', '', $raw);
-            $data = json_decode(trim($raw), true);
-            \Illuminate\Support\Facades\Log::info('Ollama Parsed Data: ' . print_r($data, true));
-            if ($data) {
+            if ($data && is_array($data)) {
                 // Update Bio
                 if (isset($data['bio'])) {
                     $meta = $student->profile_metadata ?? [];
@@ -134,17 +133,16 @@ class StudentController extends Controller
                 // Add Skills
                 if (isset($data['skills']) && is_array($data['skills'])) {
                     foreach ($data['skills'] as $skillName) {
-                        $masterSkill = \App\Models\MasterSkill::firstOrCreate(
+                        $masterSkill = \App\Models\Skill::firstOrCreate(
                             ['name' => strtoupper(trim($skillName))],
-                            ['category' => 'TECHNICAL', 'is_verified' => true]
+                            ['category' => 'TECHNICAL']
                         );
                         StudentSkill::firstOrCreate([
                             'student_id' => $student->id,
-                            'skill_id' => $masterSkill->id
+                            'skill_id' => $masterSkill->id,
                         ], [
-                            'skill_name' => trim($skillName),
                             'proficiency_level' => 'INTERMEDIATE',
-                            'is_verified' => false
+                            'source' => \App\Enums\SkillSource::RESUME->value
                         ]);
                     }
                 }
@@ -166,6 +164,8 @@ class StudentController extends Controller
                 // Automatically recalculate the readiness score after AI fills the profile
                 $this->readinessService->calculateReadiness($student);
             }
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::warning('AI resume extraction skipped or failed: ' . $e->getMessage());
         }
 
         return response()->json(['message' => 'Resume uploaded and analyzed successfully', 'resume_url' => $student->resume_url]);

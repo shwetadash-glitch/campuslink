@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { PageHeader } from "@/components/layout/PageHeader";
+import { adminApi } from "@/services/adminApi";
 
 const INITIAL_EVENTS = [
   { id: 1, name: "TechCorp Aptitude Test", date: "Oct 15, 2026", time: "10:00 AM - 12:00 PM", location: "Computer Center Labs", type: "TEST", conflict: false, description: "Initial screening test focusing on quantitative aptitude, logical reasoning, and basic programming concepts for all registered candidates." },
@@ -23,13 +24,23 @@ export default function SchedulerPage() {
   
   const [modalState, setModalState] = useState<{ type: string, event?: any, date?: string } | null>(null);
 
-  // Load from local storage on mount
+  // Load from API or local storage on mount
   React.useEffect(() => {
-    const savedEvents = localStorage.getItem("scheduler_events");
+    let isMounted = true;
+    adminApi.getSchedulerEvents().then((apiEvents) => {
+      if (isMounted && Array.isArray(apiEvents) && apiEvents.length > 0) {
+        setEvents(apiEvents);
+      }
+    }).catch(() => {
+      const savedEvents = localStorage.getItem("scheduler_events");
+      if (savedEvents) setEvents(JSON.parse(savedEvents));
+    });
+
     const savedIgnored = localStorage.getItem("scheduler_ignored");
-    if (savedEvents) setEvents(JSON.parse(savedEvents));
     if (savedIgnored) setIgnoredConflicts(JSON.parse(savedIgnored));
     setIsLoaded(true);
+
+    return () => { isMounted = false; };
   }, []);
 
   // Save to local storage on change

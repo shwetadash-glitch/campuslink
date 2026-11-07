@@ -122,6 +122,7 @@ class ReadinessScoringService
             'overall_score' => round($finalScore, 1),
             'readiness_level' => $level->value,
             'components' => $final_components,
+            'dimensions' => $final_components,
             'configured_weights' => self::WEIGHTS,
             'effective_weights' => $effective_weights,
             'strengths' => $all_strengths,
@@ -132,6 +133,7 @@ class ReadinessScoringService
                 'missing_dimensions' => $missing_dimensions,
                 'weights_redistributed' => count($missing_dimensions) > 0
             ],
+            'version' => 'v1.0',
             'model_version' => 'v1.0',
             'calculated_at' => now()->toIso8601String()
         ];

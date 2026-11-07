@@ -3,27 +3,32 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Services\AI\AiManager;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Log;
 
 class AiHelperController extends Controller
 {
+    protected AiManager $aiManager;
+
+    public function __construct(AiManager $aiManager)
+    {
+        $this->aiManager = $aiManager;
+    }
+
     public function chat(Request $request)
     {
         $validated = $request->validate([
             'message' => 'nullable|string|max:2000',
-            'session_history' => 'nullable|array' // to keep track of state
+            'session_history' => 'nullable|array'
         ]);
 
         $message = trim($validated['message'] ?? '');
         $history = $validated['session_history'] ?? [];
 
-        // Prepare messages for Ollama
-        $ollamaMessages = [];
+        $messages = [];
         
-        // System prompt
-        $ollamaMessages[] = [
+        // System prompt defining persona
+        $messages[] = [
             'role' => 'system',
             'content' => "You are an AI technical interviewer helping a computer science student practice for job interviews. Your goals are:
 - Ask one technical question at a time.
@@ -40,65 +45,32 @@ class AiHelperController extends Controller
             $content = $msg['content'] ?? '';
             
             if (!empty($content)) {
-                $ollamaMessages[] = [
+                $messages[] = [
                     'role' => $role,
                     'content' => $content
                 ];
             }
         }
 
-        // Add current user message or an initial greeting if this is the start
+        // Add current user message or an initial greeting
         if (!empty($message)) {
-            $ollamaMessages[] = [
+            $messages[] = [
                 'role' => 'user',
                 'content' => $message
             ];
         } else if (empty($history)) {
-            $ollamaMessages[] = [
+            $messages[] = [
                 'role' => 'user',
                 'content' => "Hello, I'm ready to start the interview practice."
             ];
         }
 
-        $url = config('services.ollama.url', 'http://localhost:11434') . '/api/chat';
-        $model = config('services.ollama.model', 'llama3.2');
+        $result = $this->aiManager->chat($messages);
 
-        try {
-            $response = Http::timeout(120)->post($url, [
-                'model' => $model,
-                'messages' => $ollamaMessages,
-                'stream' => false,
-            ]);
-
-            if ($response->successful()) {
-                $data = $response->json();
-                $content = $data['message']['content'] ?? null;
-                
-                if (empty($content)) {
-                    Log::error("Ollama response missing content", ['response' => $data]);
-                    return response()->json([
-                        'content' => "I'm sorry, I generated an empty response. Could you please try answering again?",
-                        'role' => 'ai'
-                    ]);
-                }
-
-                return response()->json([
-                    'content' => $content,
-                    'role' => 'ai'
-                ]);
-            } else {
-                Log::error("Ollama HTTP error: " . $response->status(), ['body' => $response->body()]);
-                return response()->json([
-                    'content' => "I'm having trouble connecting to my AI brain right now. Please try again in a moment.",
-                    'role' => 'ai'
-                ]);
-            }
-        } catch (\Exception $e) {
-            Log::error("Ollama connection failure: " . $e->getMessage());
-            return response()->json([
-                'content' => "I'm currently offline or unreachable. Please check my connection and try again.",
-                'role' => 'ai'
-            ]);
-        }
+        return response()->json([
+            'role' => 'ai',
+            'content' => $result['content'] ?? "I'm ready. Let's start with your first question.",
+            'metadata' => $result['metadata'] ?? []
+        ]);
     }
 }

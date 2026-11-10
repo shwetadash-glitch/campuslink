@@ -17,6 +17,19 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Offer Document Storage Disk
+    |--------------------------------------------------------------------------
+    |
+    | Defines the private object storage disk used for institutional offer
+    | evidence, verification documents, and contracts. Defaults to 'private'
+    | (local private disk) in local/test environments, and must be configured
+    | with a secure S3-compatible provider (e.g. AWS S3, Cloudflare R2) in production.
+    |
+    */
+    'offer_document_disk' => env('OFFER_DOCUMENT_DISK', 'private'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Filesystem Disks
     |--------------------------------------------------------------------------
     |
@@ -34,6 +47,14 @@ return [
             'driver' => 'local',
             'root' => storage_path('app/private'),
             'serve' => true,
+            'throw' => false,
+            'report' => false,
+        ],
+
+        'private' => [
+            'driver' => 'local',
+            'root' => storage_path('app/private'),
+            'visibility' => 'private',
             'throw' => false,
             'report' => false,
         ],
@@ -57,6 +78,21 @@ return [
             'endpoint' => env('AWS_ENDPOINT'),
             'use_path_style_endpoint' => env('AWS_USE_PATH_STYLE_ENDPOINT', false),
             'throw' => false,
+            'report' => false,
+        ],
+
+        's3_documents' => [
+            'driver' => 's3',
+            'provider' => env('OFFER_DOCUMENT_PROVIDER', 'aws'),
+            'key' => env('OFFER_DOCUMENT_AWS_ACCESS_KEY_ID', env('AWS_ACCESS_KEY_ID')),
+            'secret' => env('OFFER_DOCUMENT_AWS_SECRET_ACCESS_KEY', env('AWS_SECRET_ACCESS_KEY')),
+            'region' => env('OFFER_DOCUMENT_AWS_DEFAULT_REGION', env('AWS_DEFAULT_REGION', 'us-east-1')),
+            'bucket' => env('OFFER_DOCUMENT_AWS_BUCKET', env('AWS_BUCKET')),
+            'url' => env('OFFER_DOCUMENT_AWS_URL', env('AWS_URL')),
+            'endpoint' => env('OFFER_DOCUMENT_AWS_ENDPOINT', env('AWS_ENDPOINT')),
+            'use_path_style_endpoint' => env('OFFER_DOCUMENT_AWS_USE_PATH_STYLE_ENDPOINT', env('AWS_USE_PATH_STYLE_ENDPOINT', false)),
+            'visibility' => 'private',
+            'throw' => true,
             'report' => false,
         ],
 

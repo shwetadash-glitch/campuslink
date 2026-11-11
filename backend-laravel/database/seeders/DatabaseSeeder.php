@@ -53,46 +53,33 @@ class DatabaseSeeder extends Seeder {
 
         $skillGap = new SkillGapService();
         $skillGap->analyzeSkillGaps($student, $job);
-        // Standard Demo Accounts for Frontend
-        User::factory()->create([
-            'email' => 'admin@campuslink.com', 
-            'password_hash' => \Illuminate\Support\Facades\Hash::make('admin123'),
-            'role' => UserRole::SUPER_ADMIN->value
-        ]);
 
-        User::factory()->create([
-            'email' => 'officer@campuslink.com', 
-            'password_hash' => \Illuminate\Support\Facades\Hash::make('officer123'),
-            'role' => UserRole::PLACEMENT_OFFICER->value
-        ]);
-        
-        $stuUser2 = User::factory()->create([
-            'email' => 'student1@college.edu', 
-            'password_hash' => \Illuminate\Support\Facades\Hash::make('stu123'),
-            'role' => UserRole::STUDENT->value
-        ]);
-        Student::factory()->create(['user_id' => $stuUser2->id, 'first_name' => 'Demo', 'last_name' => 'Student', 'cgpa' => 8.0]);
+        // Standard Demo Accounts for Frontend (Non-Production Only)
+        if (!app()->environment('production')) {
+            $this->call(DemoAccountSeeder::class);
 
-        $stuUser3 = User::factory()->create([
-            'email' => 'student2@college.edu', 
-            'password_hash' => \Illuminate\Support\Facades\Hash::make('stu123'),
-            'role' => UserRole::STUDENT->value
-        ]);
-        Student::factory()->create(['user_id' => $stuUser3->id, 'first_name' => 'Second', 'last_name' => 'Student', 'cgpa' => 7.5]);
-        
-        $recUser2 = User::factory()->create([
-            'email' => 'recruiter1@comp1.com', 
-            'password_hash' => \Illuminate\Support\Facades\Hash::make('rec123'),
-            'role' => UserRole::RECRUITER->value
-        ]);
-        Recruiter::create(['user_id' => $recUser2->id, 'company_id' => $company->id, 'contact_name' => 'Demo Recruiter', 'contact_email' => 'recruiter1@comp1.com']);
+            $stuUser3 = User::firstOrCreate(
+                ['email' => 'student2@college.edu'],
+                [
+                    'password_hash' => \Illuminate\Support\Facades\Hash::make('password'),
+                    'role' => UserRole::STUDENT->value
+                ]
+            );
+            if (!$stuUser3->studentProfile) {
+                Student::factory()->create(['user_id' => $stuUser3->id, 'first_name' => 'Second', 'last_name' => 'Student', 'cgpa' => 7.5]);
+            }
 
-        $company2 = Company::factory()->create(['name' => 'Innovate LLC']);
-        $recUser3 = User::factory()->create([
-            'email' => 'recruiter2@comp2.com', 
-            'password_hash' => \Illuminate\Support\Facades\Hash::make('rec123'),
-            'role' => UserRole::RECRUITER->value
-        ]);
-        Recruiter::create(['user_id' => $recUser3->id, 'company_id' => $company2->id, 'contact_name' => 'Second Recruiter', 'contact_email' => 'recruiter2@comp2.com']);
+            $company2 = Company::firstOrCreate(['name' => 'Innovate LLC']);
+            $recUser3 = User::firstOrCreate(
+                ['email' => 'recruiter2@comp2.com'],
+                [
+                    'password_hash' => \Illuminate\Support\Facades\Hash::make('password'),
+                    'role' => UserRole::RECRUITER->value
+                ]
+            );
+            if (!$recUser3->recruiterProfile) {
+                Recruiter::create(['user_id' => $recUser3->id, 'company_id' => $company2->id, 'contact_name' => 'Second Recruiter', 'contact_email' => 'recruiter2@comp2.com']);
+            }
+        }
     }
 }

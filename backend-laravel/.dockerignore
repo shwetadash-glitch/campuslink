@@ -7,3 +7,24 @@
 .env.*
 !.env.example
 .phpunit.result.cache
+# Additional environment and backup protection
+.env-*
+
+# Database dumps and local database files
+*.sql
+*.dump
+*.backup
+*.bak
+*.sqlite
+*.sqlite3
+*.db
+
+# Private student and recruiter documents
+/storage/app/private/
+/storage/app/private_documents/
+/storage/app/public/certificates/
+
+# Private keys and certificates
+*.pem
+*.p12
+*.pfx

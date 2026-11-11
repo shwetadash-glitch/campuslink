@@ -377,13 +377,17 @@ class OfferVerificationService
         $originalFilename = $file->getClientOriginalName();
         $extension = $file->getClientOriginalExtension() ?: 'bin';
 
-        $storageDisk = 'private';
+        $storageDisk = $this->validateStorageConfig();
         $storageKey = "offer_documents/{$offer->id}/" . (string) Str::uuid() . ".{$extension}";
 
-        // 3. Staging and atomic persistence
+        // 3. Staging and atomic persistence with private visibility
         $storedSuccessfully = false;
         try {
-            $storedSuccessfully = Storage::disk($storageDisk)->put($storageKey, file_get_contents($file->getRealPath()));
+            $storedSuccessfully = Storage::disk($storageDisk)->put(
+                $storageKey,
+                file_get_contents($file->getRealPath()),
+                'private'
+            );
             if (! $storedSuccessfully) {
                 throw new OfferVerificationException('Failed to write document to secure storage disk.', 'STORAGE_WRITE_FAILED', 500);
             }
@@ -531,17 +535,105 @@ class OfferVerificationService
             }
         }
 
-        if (empty($doc->storage_key) || ! Storage::disk($doc->storage_disk)->exists($doc->storage_key)) {
-            abort(404, 'The requested document file could not be found on storage.');
+        $disk = $doc->storage_disk ?: (string) config('filesystems.offer_document_disk', 'private');
+        if (empty($doc->storage_key) || ! Storage::disk($disk)->exists($doc->storage_key)) {
+            // Fallback: If not found on recorded disk, check alternate local private disk
+            if (in_array($disk, ['private', 'local'], true)) {
+                $fallbackDisk = ($disk === 'private') ? 'local' : 'private';
+                if (Storage::disk($fallbackDisk)->exists($doc->storage_key)) {
+                    $disk = $fallbackDisk;
+                } else {
+                    abort(404, 'The requested document file could not be found on storage.');
+                }
+            } else {
+                abort(404, 'The requested document file could not be found on storage.');
+            }
         }
 
         $filename = $doc->original_filename ?: "offer_doc_{$doc->id}.pdf";
 
-        return Storage::disk($doc->storage_disk)->response(
+        return Storage::disk($disk)->response(
             $doc->storage_key,
             $filename,
             ['Content-Type' => $doc->mime_type ?: 'application/octet-stream']
         );
+    }
+
+    /**
+     * Validates that the storage disk configuration satisfies environment safety requirements.
+     * In production, uploads fail closed if private cloud object storage is not properly configured.
+     *
+     * @throws OfferVerificationException
+     */
+    public function validateStorageConfig(): string
+    {
+        $disk = (string) config('filesystems.offer_document_disk', env('OFFER_DOCUMENT_DISK', 'private'));
+        $isProduction = app()->environment('production');
+
+        if ($isProduction) {
+            $diskConfig = config("filesystems.disks.{$disk}");
+            $driver = $diskConfig['driver'] ?? null;
+
+            // Ephemeral local storage is strictly forbidden in production
+            if ($driver !== 's3') {
+                throw new OfferVerificationException(
+                    'Private object storage is not configured for production document uploads.',
+                    'STORAGE_NOT_CONFIGURED',
+                    503
+                );
+            }
+
+            // Public visibility is strictly forbidden for confidential document evidence
+            if (($diskConfig['visibility'] ?? null) === 'public') {
+                throw new OfferVerificationException(
+                    'Offer document storage must strictly enforce private visibility.',
+                    'STORAGE_CONFIG_INSECURE',
+                    503
+                );
+            }
+
+            // Verify non-empty S3 credentials and bucket
+            $key = $diskConfig['key'] ?? null;
+            $secret = $diskConfig['secret'] ?? null;
+            $bucket = $diskConfig['bucket'] ?? null;
+
+            if (empty($key) || empty($secret) || empty($bucket)) {
+                throw new OfferVerificationException(
+                    'Private object storage credentials or bucket are incomplete in production configuration.',
+                    'STORAGE_CONFIG_INCOMPLETE',
+                    503
+                );
+            }
+
+            // Provider-specific validation (AWS S3 vs Cloudflare R2 / Custom S3)
+            $provider = strtolower((string) ($diskConfig['provider'] ?? env('OFFER_DOCUMENT_PROVIDER', 'aws')));
+            $endpoint = $diskConfig['endpoint'] ?? null;
+            $isR2OrCustom = in_array($provider, ['r2', 'cloudflare', 'custom'], true)
+                || (! empty($endpoint) && str_contains((string) $endpoint, 'r2.cloudflarestorage.com'));
+
+            if ($isR2OrCustom) {
+                // Cloudflare R2 / Custom S3 requires an explicit, valid HTTP/HTTPS endpoint
+                if (empty($endpoint) || ! filter_var($endpoint, FILTER_VALIDATE_URL)) {
+                    throw new OfferVerificationException(
+                        'Cloudflare R2 or custom S3-compatible provider requires a valid endpoint URL.',
+                        'STORAGE_CONFIG_INCOMPLETE',
+                        503
+                    );
+                }
+            } else {
+                // AWS S3 requires a valid region (endpoint is optional as AWS SDK uses default regional endpoint)
+                $region = $diskConfig['region'] ?? null;
+                if (empty($region)) {
+                    throw new OfferVerificationException(
+                        'AWS S3 storage requires a valid region configuration.',
+                        'STORAGE_CONFIG_INCOMPLETE',
+                        503
+                    );
+                }
+            }
+        }
+
+        return $disk;
     }
 
     /**

@@ -14,7 +14,7 @@ interface AuthContextType {
   user: User | null;
   token: string | null;
   loading: boolean;
-  login: (token: string, refresh: string) => void;
+  login: (token: string, refresh: string, userData?: User) => void;
   logout: () => void;
 }
 
@@ -44,14 +44,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
       try {
         const { apiClient } = await import("@/services/apiClient");
-        const data = await apiClient.get<User>("/api/v1/auth/me");
+        const data = await apiClient.get<User | { data: User }>("/api/v1/auth/me");
         // Laravel returns user inside `data` sometimes if using API resources?
         // Wait, UserResource returning array: data: {...} vs plain {...}?
         // In Laravel, `UserResource::make($user)` typically returns `{"data": {...}}`.
         // Let's check what it returns or just accept the response.
         // Actually, AuthController in my script did `new UserResource($user)` without wrapping in an array, wait. Laravel wraps in `data` by default.
         // I will just use `data.data || data` to be safe!
-        setUser((data as any).data || data);
+        setUser("data" in data && data.data ? data.data : (data as User));
       } catch (err) {
         console.error('Failed to fetch user', err);
         localStorage.removeItem('access_token');
@@ -65,11 +65,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     fetchUser();
   }, [pathname]);
 
-  const login = (authToken: string, refresh: string) => {
+  const login = (authToken: string, refresh: string, userData?: User) => {
     localStorage.setItem('access_token', authToken);
     localStorage.setItem('token', authToken);
     localStorage.setItem('refresh_token', refresh);
     setToken(authToken);
+    if (userData) {
+      setUser(userData);
+    }
     window.location.href = '/dashboard';
   };
 

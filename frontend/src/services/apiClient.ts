@@ -98,7 +98,7 @@ async function request<T>(
     ...(options.headers as Record<string, string>),
   };
 
-  if (token && !headers["Authorization"]) {
+  if (token && !headers["Authorization"] && !endpoint.includes("/auth/login") && !endpoint.includes("/auth/register")) {
     headers["Authorization"] = `Bearer ${token}`;
   }
 

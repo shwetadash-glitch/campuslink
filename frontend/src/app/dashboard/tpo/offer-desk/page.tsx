@@ -24,18 +24,26 @@ export default function OfferDeskPage() {
   const [activeTab, setActiveTab] = useState("PENDING");
   const [offers, setOffers] = useState(MOCK_OFFERS);
   const [viewingOffer, setViewingOffer] = useState<any | null>(null);
+  const [viewingReasonOffer, setViewingReasonOffer] = useState<any | null>(null);
+  const [toastMessage, setToastMessage] = useState<string>("");
   
   const filteredOffers = offers.filter(o => o.status === activeTab);
   
+  const showToast = (msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(""), 3500);
+  };
+
   const handleVerify = (id: number) => {
-    setOffers(offers.map(o => o.id === id ? { ...o, status: "VERIFIED" } : o));
-    alert("Offer officially verified and added to placement telemetry!");
+    setOffers(offers.map(o => o.id === id ? { ...o, status: "VERIFIED", flagReason: undefined } : o));
+    showToast("Offer officially verified and added to placement telemetry!");
   };
 
   const handleFlag = (id: number) => {
     const reason = prompt("Enter reason for flagging this offer:");
     if (reason) {
       setOffers(offers.map(o => o.id === id ? { ...o, status: "FLAGGED", flagReason: reason } : o));
+      showToast("Offer has been marked as flagged.");
     }
   };
 
@@ -160,7 +168,10 @@ export default function OfferDeskPage() {
                           )}
                           
                           {activeTab === 'FLAGGED' && (
-                            <button onClick={() => alert(`Flag Reason: ${offer.flagReason}`)} className="text-campusblue-800 bg-campusblue-50 border border-campusblue-100 hover:bg-campusblue-50 px-3 py-1.5 rounded-md font-semibold transition">
+                            <button 
+                              onClick={() => setViewingReasonOffer(offer)} 
+                              className="text-red-700 bg-red-50 border border-red-200 hover:bg-red-100 px-3 py-1.5 rounded-md font-semibold transition"
+                            >
                               View Reason
                             </button>
                           )}
@@ -187,10 +198,10 @@ export default function OfferDeskPage() {
               </h2>
               <div className="flex items-center gap-4">
                 <div className="flex gap-2">
-                  <button className="text-xs font-bold bg-white border border-campusblue-200 px-3 py-1.5 rounded shadow-sm hover:bg-campusblue-50 flex items-center gap-1">
+                  <button onClick={() => window.print()} className="text-xs font-bold bg-white border border-campusblue-200 px-3 py-1.5 rounded shadow-sm hover:bg-campusblue-50 flex items-center gap-1 cursor-pointer">
                     <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg> Download PDF
                   </button>
-                  <button className="text-xs font-bold bg-white border border-campusblue-200 px-3 py-1.5 rounded shadow-sm hover:bg-campusblue-50 flex items-center gap-1">
+                  <button onClick={() => window.print()} className="text-xs font-bold bg-white border border-campusblue-200 px-3 py-1.5 rounded shadow-sm hover:bg-campusblue-50 flex items-center gap-1 cursor-pointer">
                     <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg> Print
                   </button>
                 </div>
@@ -320,6 +331,91 @@ export default function OfferDeskPage() {
               </div>
             </div>
           </div>
+        </div>
+      )}
+      {/* Flag Reason Modal */}
+      {viewingReasonOffer && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden border border-red-100">
+            <div className="p-5 border-b border-red-100 bg-red-50/70 flex justify-between items-center">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center text-red-600 font-bold shrink-0">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="font-bold text-red-950 text-base">Offer Verification Flag</h3>
+                  <p className="text-xs text-red-600 font-medium">Placement Cell Audit Review</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setViewingReasonOffer(null)} 
+                className="w-8 h-8 flex items-center justify-center rounded-full bg-red-100/70 hover:bg-red-200 text-red-700 transition"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4">
+              <div className="bg-campusblue-50/50 rounded-xl p-3.5 border border-campusblue-100 text-xs text-campusblue-800 space-y-1.5 font-medium">
+                <div className="flex justify-between">
+                  <span>Candidate: <strong className="text-campusblue-900">{viewingReasonOffer.student}</strong> ({viewingReasonOffer.studentId})</span>
+                  <span>Branch: <strong className="text-campusblue-900">{viewingReasonOffer.branch}</strong></span>
+                </div>
+                <div className="flex justify-between pt-1 border-t border-campusblue-100">
+                  <span>Corporate: <strong className="text-campusblue-900">{viewingReasonOffer.company}</strong></span>
+                  <span>Offered CTC: <strong className="text-campusblue-900">{viewingReasonOffer.ctc}</strong></span>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold uppercase tracking-wider text-red-700 mb-1.5">Flag Reason / Non-Compliance Note</label>
+                <div className="p-4 bg-red-50/80 rounded-xl border border-red-200 text-sm text-red-900 font-medium leading-relaxed">
+                  {viewingReasonOffer.flagReason}
+                </div>
+              </div>
+            </div>
+
+            <div className="p-4 border-t border-gray-100 bg-gray-50 flex items-center justify-between">
+              <button
+                onClick={() => {
+                  const target = viewingReasonOffer;
+                  setViewingReasonOffer(null);
+                  setViewingOffer(target);
+                }}
+                className="text-xs font-bold text-campusblue-700 hover:text-campusblue-900 px-3 py-2 rounded-lg bg-campusblue-50 hover:bg-campusblue-100 transition flex items-center gap-1.5 cursor-pointer"
+              >
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                View Full Document
+              </button>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => {
+                    handleVerify(viewingReasonOffer.id);
+                    setViewingReasonOffer(null);
+                  }}
+                  className="text-xs font-bold text-green-700 hover:text-green-800 px-3 py-2 rounded-lg bg-green-50 hover:bg-green-100 border border-green-200 transition cursor-pointer"
+                >
+                  Clear Flag & Verify
+                </button>
+                <button
+                  onClick={() => setViewingReasonOffer(null)}
+                  className="text-xs font-bold text-gray-700 hover:text-gray-900 px-4 py-2 rounded-lg bg-white border border-gray-200 hover:bg-gray-100 transition shadow-sm cursor-pointer"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* In-App Toast */}
+      {toastMessage && (
+        <div className="fixed bottom-6 right-6 z-50 bg-campusblue-900 text-white px-5 py-3 rounded-xl shadow-xl flex items-center gap-3 border border-campusblue-700">
+          <svg className="w-5 h-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+          <span className="text-xs font-semibold">{toastMessage}</span>
         </div>
       )}
     </AppLayout>

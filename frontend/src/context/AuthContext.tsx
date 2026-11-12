@@ -34,6 +34,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const pathname = usePathname();
 
   useEffect(() => {
+    // If user is directly on the login or register page, do not send background token verification requests
+    if (pathname === '/login' || pathname === '/register') {
+      setLoading(false);
+      return;
+    }
+
     const fetchUser = async () => {
       const storedToken = localStorage.getItem('access_token') || localStorage.getItem('token');
       if (!storedToken) {
@@ -45,12 +51,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       try {
         const { apiClient } = await import("@/services/apiClient");
         const data = await apiClient.get<User>("/api/v1/auth/me");
-        // Laravel returns user inside `data` sometimes if using API resources?
-        // Wait, UserResource returning array: data: {...} vs plain {...}?
-        // In Laravel, `UserResource::make($user)` typically returns `{"data": {...}}`.
-        // Let's check what it returns or just accept the response.
-        // Actually, AuthController in my script did `new UserResource($user)` without wrapping in an array, wait. Laravel wraps in `data` by default.
-        // I will just use `data.data || data` to be safe!
         setUser((data as any).data || data);
       } catch (err: any) {
         localStorage.removeItem('access_token');

@@ -86,7 +86,7 @@ export const CandidateProfileModal: React.FC<CandidateProfileModalProps> = ({
                 <span>📄 Candidate Resume Available</span>
               </div>
               <a
-                href={`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8001"}${profile.resume_url.replace("/api/v1", "")}`}
+                href={`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}${profile.resume_url.replace("/api/v1", "")}`}
                 target="_blank"
                 rel="noreferrer"
                 className="text-xs font-bold text-campusblue-800 hover:underline inline-flex items-center gap-1"

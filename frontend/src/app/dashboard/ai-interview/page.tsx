@@ -32,7 +32,7 @@ export default function AiInterviewPage() {
             const list = await aiInterviewApi.listStudentInterviews();
             setInterviews(list);
         } catch (err: any) {
-            setError(err?.response?.data?.message || 'Failed to load available AI interviews.');
+            setError(err?.message || err?.response?.data?.message || 'Failed to load available AI interviews.');
         } finally {
             setLoading(false);
         }
@@ -104,7 +104,7 @@ export default function AiInterviewPage() {
                 setViewMode('INTERVIEW');
             }
         } catch (err: any) {
-            setError(err?.response?.data?.message || 'Unable to initiate interview session.');
+            setError(err?.message || err?.response?.data?.message || 'Unable to initiate interview session.');
         } finally {
             setLoading(false);
         }
@@ -122,7 +122,7 @@ export default function AiInterviewPage() {
                 setViewMode('INTERVIEW');
             }
         } catch (err: any) {
-            setError(err?.response?.data?.message || 'Failed to retrieve interview session.');
+            setError(err?.message || err?.response?.data?.message || 'Failed to retrieve interview session.');
         } finally {
             setLoading(false);
         }
@@ -167,7 +167,7 @@ export default function AiInterviewPage() {
                 setViewMode('REPORT');
             }
         } catch (err: any) {
-            setError(err?.response?.data?.message || 'Failed to submit answer.');
+            setError(err?.message || err?.response?.data?.message || 'Failed to submit answer.');
             // Re-sync session state
             if (session) {
                 const refreshed = await aiInterviewApi.showCandidateSession(session.id);

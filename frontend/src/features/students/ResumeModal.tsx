@@ -172,7 +172,7 @@ export function ResumeModal({ isOpen, onClose, studentId, studentName, readiness
               {profile.basic_info?.resume_url && (
                 <div className="mt-8 pt-4 border-t text-center">
                   <a 
-                    href={(process.env.NEXT_PUBLIC_API_URL || "http://localhost:8001") + profile.basic_info.resume_url.replace("/api/v1", "")}
+                    href={(process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000") + profile.basic_info.resume_url.replace("/api/v1", "")}
                     target="_blank"
                     rel="noreferrer"
                     className="inline-flex items-center gap-2 bg-campusblue-900 text-white px-6 py-2 rounded-lg hover:bg-campusblue-800 font-sans"

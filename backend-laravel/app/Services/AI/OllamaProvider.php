@@ -41,7 +41,8 @@ class OllamaProvider implements AiProviderInterface
         }
 
         try {
-            $response = Http::timeout($this->timeout)->post($url, $payload);
+            $timeout = (int) ($options['timeout'] ?? $this->timeout);
+            $response = Http::timeout($timeout)->post($url, $payload);
 
             if ($response->successful()) {
                 $data = $response->json();
@@ -61,7 +62,10 @@ class OllamaProvider implements AiProviderInterface
             Log::error("Ollama API responded with HTTP error: " . $response->status(), [
                 'body' => $response->body()
             ]);
-            throw new \RuntimeException("Ollama API returned HTTP " . $response->status());
+            throw new \RuntimeException("Ollama API returned HTTP " . $response->status() . ": " . $response->body());
+        } catch (\Illuminate\Http\Client\ConnectionException $e) {
+            Log::error("Ollama chat connection failed: " . $e->getMessage());
+            throw new \RuntimeException("Unable to connect to Ollama at {$this->baseUrl}. Please verify that the Ollama service is running.", 0, $e);
         } catch (\Exception $e) {
             Log::error("Ollama chat request failed: " . $e->getMessage());
             throw $e;
@@ -82,19 +86,32 @@ class OllamaProvider implements AiProviderInterface
         }
 
         try {
-            $response = Http::timeout($this->timeout)->post($url, $payload);
+            $timeout = (int) ($options['timeout'] ?? $this->timeout);
+            $response = Http::timeout($timeout)->post($url, $payload);
 
             if ($response->successful()) {
                 $raw = $response->json('response');
                 if ($jsonSchema !== null || ($options['format'] ?? null) === 'json') {
-                    $cleaned = preg_replace('/^```json\s*|\s*```$/m', '', trim($raw));
+                    $cleaned = preg_replace('/^```(?:json)?\s*|\s*```$/m', '', trim($raw));
                     $decoded = json_decode($cleaned, true);
-                    return is_array($decoded) ? $decoded : ['raw' => $raw];
+                    if ($decoded === null) {
+                        // Attempt to extract JSON block if there was commentary around it
+                        if (preg_match('/(\{.*\}|\[.*\])/s', $cleaned, $matches)) {
+                            $decoded = json_decode($matches[1], true);
+                        }
+                    }
+                    if ($decoded === null) {
+                        throw new \RuntimeException("Ollama returned invalid JSON response: " . substr($raw, 0, 500));
+                    }
+                    return $decoded;
                 }
                 return $raw;
             }
 
-            throw new \RuntimeException("Ollama generate failed with HTTP " . $response->status());
+            throw new \RuntimeException("Ollama generate failed with HTTP " . $response->status() . ": " . $response->body());
+        } catch (\Illuminate\Http\Client\ConnectionException $e) {
+            Log::error("Ollama generate connection failed: " . $e->getMessage());
+            throw new \RuntimeException("Unable to connect to Ollama at {$this->baseUrl}. Please verify that the Ollama service is running.", 0, $e);
         } catch (\Exception $e) {
             Log::error("Ollama generate request failed: " . $e->getMessage());
             throw $e;

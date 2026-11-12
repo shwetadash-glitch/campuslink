@@ -657,7 +657,7 @@ export default function ProfilePage() {
                       )}
                       {cert.proof_path && (
                         <a
-                          href={`http://127.0.0.1:8001${cert.proof_path}`}
+                          href={cert.proof_path.startsWith('http') ? cert.proof_path : `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}${cert.proof_path}`}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="text-xs font-semibold text-campusblue-800 hover:text-campusblue-900 bg-campusblue-50 hover:bg-campusblue-100 font-serif px-3 py-1.5 rounded-md transition flex items-center gap-1"

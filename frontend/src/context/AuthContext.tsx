@@ -52,12 +52,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         // Actually, AuthController in my script did `new UserResource($user)` without wrapping in an array, wait. Laravel wraps in `data` by default.
         // I will just use `data.data || data` to be safe!
         setUser((data as any).data || data);
-      } catch (err) {
-        console.error('Failed to fetch user', err);
+      } catch (err: any) {
         localStorage.removeItem('access_token');
         localStorage.removeItem('token');
         localStorage.removeItem('refresh_token');
         setToken(null);
+        setUser(null);
+        if (err?.status && err.status !== 401) {
+          console.warn('Failed to restore user session:', err?.message || err);
+        }
       } finally {
         setLoading(false);
       }

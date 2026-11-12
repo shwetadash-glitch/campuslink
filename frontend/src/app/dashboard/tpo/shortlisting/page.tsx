@@ -10,35 +10,57 @@ import { ErrorState } from "@/components/feedback/ErrorState";
 import { useEffect } from "react";
 
 export default function ShortlistingPage() {
-  
   const [targetDrive, setTargetDrive] = useState("1");
+  const [drives, setDrives] = useState<any[]>([]);
   const [candidates, setCandidates] = useState<ShortlistCandidate[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [selectedStudent, setSelectedStudent] = useState<any>(null);
 
   useEffect(() => {
-    const controller = new AbortController();
+    adminApi.getDrives().then(data => {
+      if (Array.isArray(data) && data.length > 0) {
+        setDrives(data);
+      }
+    }).catch(err => {
+      console.warn("Could not load dynamic drives list:", err);
+    });
+  }, []);
+
+  const loadShortlist = async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const res = await adminApi.getAiShortlist(parseInt(targetDrive));
+      setCandidates(res.candidates || []);
+      setLoading(false);
+    } catch (err: any) {
+      setError(err?.response?.data?.message || err.message || "Failed to fetch shortlist");
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    let isCancelled = false;
     const fetchShortlist = async () => {
       setLoading(true);
       setError("");
       try {
-        const res = await adminApi.getAiShortlist(parseInt(targetDrive), {}, { signal: controller.signal });
-        if (!controller.signal.aborted) {
+        const res = await adminApi.getAiShortlist(parseInt(targetDrive));
+        if (!isCancelled) {
           setCandidates(res.candidates || []);
           setLoading(false);
         }
       } catch (err: any) {
-        if (err.name === 'AbortError' || err.message?.includes('aborted')) {
-          return;
+        if (!isCancelled) {
+          setError(err?.response?.data?.message || err.message || "Failed to fetch shortlist");
+          setLoading(false);
         }
-        setError(err?.response?.data?.message || err.message || "Failed to fetch shortlist");
-        setLoading(false);
       }
     };
     fetchShortlist();
     return () => {
-      controller.abort();
+      isCancelled = true;
     };
   }, [targetDrive]);
 
@@ -70,12 +92,22 @@ export default function ShortlistingPage() {
           <div className="flex-1 w-full">
             <label className="block text-xs font-bold text-campusblue-500 uppercase tracking-wider mb-2">Target Placement Drive</label>
             <select 
-              className="w-full max-w-md border-campusblue-200 rounded-lg shadow-sm focus:ring-blue-500 focus:border-campusblue-500 text-sm font-semibold"
+              className="w-full max-w-md border-campusblue-200 rounded-lg shadow-sm focus:ring-blue-500 focus:border-campusblue-500 text-sm font-semibold p-2"
               value={targetDrive}
               onChange={(e) => setTargetDrive(e.target.value)}
             >
-              <option value="1">TechCorp Campus Drive 2026</option>
-              <option value="2">Innovate Intern Hiring</option>
+              {drives.length > 0 ? (
+                drives.map((d) => (
+                  <option key={d.id} value={d.id}>
+                    {d.name || d.title} ({d.company_name || 'General'})
+                  </option>
+                ))
+              ) : (
+                <>
+                  <option value="1">TechCorp Campus Drive 2026</option>
+                  <option value="2">Innovate Intern Hiring</option>
+                </>
+              )}
             </select>
           </div>
           
@@ -118,7 +150,7 @@ export default function ShortlistingPage() {
                   <tr><td colSpan={6} className="px-6 py-10"><LoadingState message="Generating AI Shortlist..." /></td></tr>
                 )}
                 {error && !loading && (
-                  <tr><td colSpan={6} className="px-6 py-10"><ErrorState message={error} /></td></tr>
+                  <tr><td colSpan={6} className="px-6 py-10"><ErrorState message={error} onRetry={loadShortlist} /></td></tr>
                 )}
                 {!loading && !error && candidates.length === 0 && (
                   <tr><td colSpan={6} className="px-6 py-10 text-center text-campusblue-500 font-medium">No candidates found for this drive.</td></tr>

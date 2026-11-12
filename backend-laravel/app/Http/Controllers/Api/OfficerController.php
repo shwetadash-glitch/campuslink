@@ -108,6 +108,12 @@ class OfficerController extends Controller {
             $matched = implode(', ', array_column($gaps['matched_skills'], 'skill_name'));
             $promptContext = "Student {$student->first_name}. Score: {$score}. Eligible: ".($eligibility['is_eligible']?'Yes':'No').". Missing: {$missing}. Matched: {$matched}. Tier: {$tier}.";
             
+            $justification = match($tier) {
+                'HIGHLY_EMPLOYABLE' => "Profile demonstrates strong readiness score ({$score}%) and satisfies all hard eligibility criteria for this role.",
+                'QUALIFIED' => "Candidate meets eligibility criteria with moderate readiness ({$score}%); minor skill gaps present.",
+                default => "Candidate has not met the required readiness baseline or eligibility criteria for this drive."
+            };
+
             $results[$cand->id] = [
                 'student_id' => $student->id,
                 'student_identifier' => $student->student_identifier,
@@ -120,7 +126,7 @@ class OfficerController extends Controller {
                 'partial_skills' => $gaps['partial_skills'],
                 'missing_skills' => $gaps['missing_skills'],
                 'tier' => $tier,
-                'justification' => 'Student tier calculated based on readiness score and eligibility (AI currently unavailable).',
+                'justification' => $justification,
                 '_context' => $promptContext
             ];
         }
@@ -129,20 +135,20 @@ class OfficerController extends Controller {
         $ollamaModel = config('services.ollama.model', 'llama3.2');
 
         if ($ollamaUrl) {
-            $chunks = array_chunk($results, 1, true);
+            $chunks = array_chunk($results, 10, true);
+            $startTime = microtime(true);
             foreach ($chunks as $chunkIndex => $chunk) {
+                if (microtime(true) - $startTime > 5) {
+                    break;
+                }
                 try {
-                    if (connection_aborted()) {
-                        Log::info("Client aborted connection. Stopping AI loop.");
-                        break;
-                    }
                     $batchContext = "";
                     foreach ($chunk as $id => $data) {
                         $batchContext .= "ID: {$id} | " . $data['_context'] . "\n";
                     }
                     $systemPrompt = "You are an AI assistant. I will provide students with their stats and IDs. For EACH student, write EXACTLY 1 short sentence justifying their tier. Output MUST be valid JSON where the keys are the EXACT numeric student IDs provided, and the values are the 1-sentence justifications. Example: {\"123\": \"Justification here\"}.";
                     
-                    $response = Http::timeout(15)->post($ollamaUrl . '/api/chat', [
+                    $response = Http::timeout(3)->post($ollamaUrl . '/api/chat', [
                         'model' => $ollamaModel,
                         'messages' => [
                             ['role' => 'system', 'content' => $systemPrompt],
@@ -161,11 +167,10 @@ class OfficerController extends Controller {
                                 }
                             }
                         }
-                    } else {
-                        Log::error("Ollama AI Shortlist batch {$chunkIndex} returned status: " . $response->status());
                     }
-                } catch (\Exception $e) {
-                    Log::error("Ollama AI Shortlist batch {$chunkIndex} failed: " . $e->getMessage());
+                } catch (\Throwable $e) {
+                    Log::warning("Ollama AI Shortlist batch {$chunkIndex} skipped: " . $e->getMessage());
+                    break;
                 }
             }
         }

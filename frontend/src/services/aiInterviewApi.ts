@@ -83,49 +83,49 @@ export interface SubmitAnswerResponse {
 export const aiInterviewApi = {
     // Candidate API
     listStudentInterviews: async (): Promise<AiInterviewListItem[]> => {
-        const res = await apiClient.get<{ status: string; interviews: AiInterviewListItem[] }>('/students/me/ai-interviews');
+        const res = await apiClient.get<{ status: string; interviews: AiInterviewListItem[] }>('/api/v1/students/me/ai-interviews');
         return res.interviews || [];
     },
 
     startCandidateSession: async (interviewId: number): Promise<CandidateInterviewSession> => {
-        const res = await apiClient.post<{ status: string; session: CandidateInterviewSession }>(`/students/me/ai-interviews/${interviewId}/start`);
+        const res = await apiClient.post<{ status: string; session: CandidateInterviewSession }>(`/api/v1/students/me/ai-interviews/${interviewId}/start`);
         return res.session;
     },
 
     showCandidateSession: async (sessionId: number): Promise<CandidateInterviewSession> => {
-        const res = await apiClient.get<{ status: string; session: CandidateInterviewSession }>(`/students/me/ai-interviews/sessions/${sessionId}`);
+        const res = await apiClient.get<{ status: string; session: CandidateInterviewSession }>(`/api/v1/students/me/ai-interviews/sessions/${sessionId}`);
         return res.session;
     },
 
     submitCandidateAnswer: async (sessionId: number, answer: string): Promise<SubmitAnswerResponse> => {
-        const res = await apiClient.post<SubmitAnswerResponse>(`/students/me/ai-interviews/sessions/${sessionId}/answer`, { answer });
+        const res = await apiClient.post<SubmitAnswerResponse>(`/api/v1/students/me/ai-interviews/sessions/${sessionId}/answer`, { answer });
         return res;
     },
 
     getSessionReport: async (sessionId: number): Promise<CandidateInterviewSession> => {
-        const res = await apiClient.get<{ status: string; session: CandidateInterviewSession }>(`/students/me/ai-interviews/sessions/${sessionId}/report`);
+        const res = await apiClient.get<{ status: string; session: CandidateInterviewSession }>(`/api/v1/students/me/ai-interviews/sessions/${sessionId}/report`);
         return res.session;
     },
 
     // Officer Management API
     listOfficerInterviews: async (queryParams?: Record<string, string>) => {
         const search = queryParams ? '?' + new URLSearchParams(queryParams).toString() : '';
-        const res = await apiClient.get<any>(`/officer/ai-interviews${search}`);
+        const res = await apiClient.get<any>(`/api/v1/officer/ai-interviews${search}`);
         return res;
     },
 
     createInterview: async (data: Record<string, any>) => {
-        const res = await apiClient.post<any>('/officer/ai-interviews', data);
+        const res = await apiClient.post<any>('/api/v1/officer/ai-interviews', data);
         return res;
     },
 
     getOfficerInterview: async (id: number) => {
-        const res = await apiClient.get<any>(`/officer/ai-interviews/${id}`);
+        const res = await apiClient.get<any>(`/api/v1/officer/ai-interviews/${id}`);
         return res;
     },
 
     generateQuestions: async (id: number, contextSource?: string, count: number = 4) => {
-        const res = await apiClient.post<any>(`/officer/ai-interviews/${id}/generate-questions`, {
+        const res = await apiClient.post<any>(`/api/v1/officer/ai-interviews/${id}/generate-questions`, {
             context_source: contextSource,
             count,
         });
@@ -133,22 +133,22 @@ export const aiInterviewApi = {
     },
 
     approveQuestion: async (id: number, questionId: number) => {
-        const res = await apiClient.post<any>(`/officer/ai-interviews/${id}/approve-question/${questionId}`);
+        const res = await apiClient.post<any>(`/api/v1/officer/ai-interviews/${id}/approve-question/${questionId}`);
         return res;
     },
 
     editQuestion: async (id: number, questionId: number, data: Record<string, any>) => {
-        const res = await apiClient.put<any>(`/officer/ai-interviews/${id}/edit-question/${questionId}`, data);
+        const res = await apiClient.put<any>(`/api/v1/officer/ai-interviews/${id}/edit-question/${questionId}`, data);
         return res;
     },
 
     publishInterview: async (id: number) => {
-        const res = await apiClient.post<any>(`/officer/ai-interviews/${id}/publish`);
+        const res = await apiClient.post<any>(`/api/v1/officer/ai-interviews/${id}/publish`);
         return res;
     },
 
     listInterviewSessions: async (id: number) => {
-        const res = await apiClient.get<any>(`/officer/ai-interviews/${id}/sessions`);
+        const res = await apiClient.get<any>(`/api/v1/officer/ai-interviews/${id}/sessions`);
         return res;
     },
 
@@ -159,7 +159,7 @@ export const aiInterviewApi = {
         feedback?: string;
         review_status?: string;
     }) => {
-        const res = await apiClient.post<any>(`/officer/ai-interviews/sessions/${sessionId}/override`, data);
+        const res = await apiClient.post<any>(`/api/v1/officer/ai-interviews/sessions/${sessionId}/override`, data);
         return res;
     },
 };

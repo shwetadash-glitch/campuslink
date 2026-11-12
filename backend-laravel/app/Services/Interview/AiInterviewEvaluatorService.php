@@ -187,16 +187,25 @@ class AiInterviewEvaluatorService
             . "- communication_clarity (0 to 100): Articulation, precision, structure, and professional tone.\n"
             . "- behavioral_star_alignment (0 to 100): Adherence to Situation, Task, Action, Result framework.\n\n"
             . "<interview_transcript>\n" . json_encode($transcript, JSON_PRETTY_PRINT) . "\n</interview_transcript>\n\n"
-            . "CRITICAL INSTRUCTIONS:\n"
-            . "- Calculate dimension_scores (each 0-100 float based strictly on evidence demonstrated).\n"
-            . "- Calculate total_score as the weighted average across dimensions (0-100 float).\n"
-            . "- Determine recommendation: 'STRONG_HIRE', 'HIRE', 'LEANING_HIRE', 'LEANING_NO_HIRE', or 'NO_HIRE'.\n"
-            . "- In ai_evaluation_summary, provide:\n"
-            . "    'overall_assessment': Objective 2-3 sentence assessment of demonstrated competencies.\n"
-            . "    'strengths': Array of 2-4 demonstrated technical or behavioral competencies.\n"
-            . "    'weaknesses': Array of 1-3 specific competency gaps based on absence of required evidence.\n"
-            . "    'quote_evidence': Array of exact verbatim quotes from candidate answers supporting your evaluation.\n"
-            . "    'recommendation': The canonical recommendation string.\n";
+            . "CRITICAL INSTRUCTIONS & FORMAT:\n"
+            . "- Return a STRICT JSON object conforming to this structure:\n"
+            . "{\n"
+            . "  \"total_score\": 82.5,\n"
+            . "  \"passed\": true,\n"
+            . "  \"dimension_scores\": {\n"
+            . "    \"technical_depth\": 85.0,\n"
+            . "    \"problem_solving\": 80.0,\n"
+            . "    \"communication_clarity\": 82.0,\n"
+            . "    \"behavioral_star_alignment\": 83.0\n"
+            . "  },\n"
+            . "  \"ai_evaluation_summary\": {\n"
+            . "    \"overall_assessment\": \"2-3 sentence objective appraisal...\",\n"
+            . "    \"strengths\": [\"Strength 1\", \"Strength 2\"],\n"
+            . "    \"weaknesses\": [\"Area for improvement 1\"],\n"
+            . "    \"quote_evidence\": [\"Exact verbatim quote from candidate answer\"],\n"
+            . "    \"recommendation\": \"HIRE\"\n"
+            . "  }\n"
+            . "}\n";
 
         $defaultResult = [
             'total_score' => 70.0,
@@ -246,15 +255,65 @@ class AiInterviewEvaluatorService
                     ],
                 ],
                 'required' => ['total_score', 'dimension_scores', 'ai_evaluation_summary'],
-            ]);
+            ], ['timeout' => 120]);
 
-            if (is_array($response) && isset($response['total_score'])) {
-                $evalData = $response;
+            if (is_array($response)) {
+                // Handle standard or flattened JSON outputs from local LLM
+                $dimScores = $response['dimension_scores'] ?? [];
+                if (empty($dimScores) || !is_array($dimScores)) {
+                    $dimScores = [];
+                    foreach (['technical_depth', 'problem_solving', 'communication_clarity', 'behavioral_star_alignment'] as $dk) {
+                        if (isset($response[$dk]) && is_numeric($response[$dk])) {
+                            $dimScores[$dk] = (float) $response[$dk];
+                        }
+                    }
+                }
+
+                $total = isset($response['total_score']) && is_numeric($response['total_score'])
+                    ? (float) $response['total_score']
+                    : (!empty($dimScores) ? round(array_sum($dimScores) / count($dimScores), 2) : null);
+
+                $summary = $response['ai_evaluation_summary'] ?? [];
+                if (empty($summary) || !is_array($summary)) {
+                    $summary = [
+                        'overall_assessment' => (string) ($response['overall_assessment'] ?? ''),
+                        'strengths' => (array) ($response['strengths'] ?? []),
+                        'weaknesses' => (array) ($response['weaknesses'] ?? []),
+                        'quote_evidence' => (array) ($response['quote_evidence'] ?? []),
+                        'recommendation' => (string) ($response['recommendation'] ?? 'LEANING_HIRE'),
+                    ];
+                }
+
+                if ($total !== null || !empty($summary['overall_assessment']) || !empty($dimScores)) {
+                    $evalData = [
+                        'total_score' => $total ?? 75.0,
+                        'passed' => $response['passed'] ?? (($total ?? 75.0) >= ($interview->pass_percentage ?? 60.0)),
+                        'dimension_scores' => !empty($dimScores) ? $dimScores : $defaultResult['dimension_scores'],
+                        'ai_evaluation_summary' => !empty($summary) ? $summary : $defaultResult['ai_evaluation_summary'],
+                    ];
+                } else {
+                    if (!$isSimulated) {
+                        $rawPreview = json_encode($response);
+                        throw new \RuntimeException("Ollama evaluation response could not be parsed: " . substr($rawPreview, 0, 500));
+                    }
+                    $evalData = $defaultResult;
+                }
             } else {
+                if (!$isSimulated) {
+                    throw new \RuntimeException("Ollama evaluation returned non-array response: " . substr((string) $response, 0, 500));
+                }
                 $evalData = $defaultResult;
             }
         } catch (\Throwable $e) {
             Log::error("AiInterviewEvaluator: Model evaluation failed: " . $e->getMessage());
+            if (!$isSimulated) {
+                throw new \App\Exceptions\AiServiceUnavailableException(
+                    "Ollama evaluation failed: " . $e->getMessage(),
+                    'evaluation',
+                    30,
+                    $e
+                );
+            }
             $evalData = $defaultResult;
         }
 

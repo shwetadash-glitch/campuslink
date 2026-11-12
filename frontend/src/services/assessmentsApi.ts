@@ -5,13 +5,18 @@ export interface AssessmentItem {
     title: string;
     code: string;
     description?: string;
+    assessment_type?: string;
     duration_minutes: number;
     total_marks: number;
     pass_percentage: number;
     max_attempts: number;
+    questions_count?: number;
+    verified_by?: string;
+    verified_at?: string;
     attempts_used: number;
     can_attempt: boolean;
     active_session_id?: number;
+    last_session_id?: number;
     last_score?: number;
     last_passed?: boolean;
     drive_title?: string;
@@ -75,6 +80,26 @@ export interface RunCodeResult {
     };
 }
 
+export interface CriticalFocusArea {
+    category: string;
+    earned_percentage: number;
+    missed_concepts: string[];
+    recommended_action: string;
+}
+
+export interface CodeDiagnostic {
+    question_title: string;
+    failure_reason: 'SYNTAX_ERROR' | 'TIMEOUT_TLE' | 'EDGE_CASE_FAILURE' | 'LOGICAL_MISMATCH' | string;
+    guidance: string;
+}
+
+export interface ImprovementRoadmap {
+    critical_focus_areas: CriticalFocusArea[];
+    code_diagnostics: CodeDiagnostic[];
+    can_reattempt: boolean;
+    reattempt_cooldown_hours: number;
+}
+
 export interface AssessmentResult {
     session_id: number;
     assessment_title: string;
@@ -90,28 +115,95 @@ export interface AssessmentResult {
         earned_percentage: number;
         passed: boolean;
         categories: Record<string, { earned: number; possible: number }>;
+        improvement_roadmap?: ImprovementRoadmap;
+    };
+    improvement_roadmap?: ImprovementRoadmap;
+}
+
+export interface OfficerAssessmentItem {
+    id: number;
+    title: string;
+    code: string;
+    description?: string;
+    assessment_type: string;
+    duration_minutes: number;
+    total_marks: number;
+    pass_percentage: number;
+    max_attempts: number;
+    is_randomized: boolean;
+    negative_marking_rate: number;
+    status: 'DRAFT' | 'PENDING_VERIFICATION' | 'PUBLISHED' | 'REJECTED' | 'ARCHIVED';
+    instructions?: string;
+    published_at?: string;
+    created_at: string;
+    questions_count: number;
+    creator?: {
+        id: number;
+        name: string;
+        email: string;
+        role: string;
+    };
+    questions?: Array<{
+        id: number;
+        title: string;
+        question_text: string;
+        type: string;
+        difficulty: string;
+        category: string;
+        marks: number;
+        negative_marks: number;
+        options?: Array<{ id: string; text: string }>;
+        correct_answer?: string;
+        explanation?: string;
+    }>;
+    metadata?: {
+        created_by_role?: string;
+        creator_name?: string;
+        created_at?: string;
+        verification?: {
+            verified_by_user_id: number;
+            verified_by_name: string;
+            verified_by_role: string;
+            verified_at: string;
+            notes?: string;
+        };
+        rejection?: {
+            rejected_by_user_id: number;
+            rejected_by_name: string;
+            rejected_by_role: string;
+            rejected_at: string;
+            reason: string;
+        };
+        submitted_for_review_at?: string;
+        submitted_by?: string;
+    };
+    drive?: {
+        id: number;
+        name: string;
     };
 }
 
 export const assessmentsApi = {
-    // Student Endpoints
+    // -------------------------------------------------------------
+    // Student Endpoints (Must use /api/v1/students/...)
+    // -------------------------------------------------------------
     getAvailableAssessments: async (): Promise<AssessmentItem[]> => {
-        const res = await apiClient.get<{ status: string; assessments: AssessmentItem[] }>('/students/me/assessments');
+        const res = await apiClient.get<{ status: string; assessments: AssessmentItem[] }>('/api/v1/students/me/assessments');
         return res.assessments || [];
     },
 
     startSession: async (assessmentId: number): Promise<CandidateSession> => {
-        const res = await apiClient.post<{ status: string; session: CandidateSession }>(`/students/me/assessments/${assessmentId}/start`);
+        const res = await apiClient.post<{ status: string; session: CandidateSession }>(`/api/v1/students/me/assessments/${assessmentId}/start`);
         return res.session;
     },
 
     getSession: async (sessionId: number): Promise<CandidateSession> => {
-        const res = await apiClient.get<{ status: string; session: CandidateSession }>(`/students/me/assessments/sessions/${sessionId}`);
+        const res = await apiClient.get<{ status: string; session: CandidateSession }>(`/api/v1/students/me/assessments/sessions/${sessionId}`);
         return res.session;
     },
 
     saveAnswer: async (sessionId: number, questionId: number, answerText: string, codeLanguage?: string) => {
-        return await apiClient.post(`/students/me/assessments/sessions/${sessionId}/save-answer`, {
+        return await apiClient.post(`/api/v1/students/me/assessments/sessions/${sessionId}/save-answer`, {
             question_id: questionId,
             answer_text: answerText,
             code_language: codeLanguage,
@@ -119,7 +211,7 @@ export const assessmentsApi = {
     },
 
     runSampleCode: async (sessionId: number, questionId: number, sourceCode: string, language: string): Promise<RunCodeResult> => {
-        return await apiClient.post<RunCodeResult>(`/students/me/assessments/sessions/${sessionId}/run-code`, {
+        return await apiClient.post<RunCodeResult>(`/api/v1/students/me/assessments/sessions/${sessionId}/run-code`, {
             question_id: questionId,
             source_code: sourceCode,
             language,
@@ -127,12 +219,12 @@ export const assessmentsApi = {
     },
 
     submitSession: async (sessionId: number) => {
-        return await apiClient.post(`/students/me/assessments/sessions/${sessionId}/submit`);
+        return await apiClient.post(`/api/v1/students/me/assessments/sessions/${sessionId}/submit`);
     },
 
     sendTelemetry: async (sessionId: number, eventType: string, eventData?: any) => {
         try {
-            await apiClient.post(`/students/me/assessments/sessions/${sessionId}/telemetry`, {
+            await apiClient.post(`/api/v1/students/me/assessments/sessions/${sessionId}/telemetry`, {
                 event_type: eventType,
                 event_data: eventData,
             });
@@ -142,27 +234,77 @@ export const assessmentsApi = {
     },
 
     getResult: async (sessionId: number): Promise<AssessmentResult> => {
-        const res = await apiClient.get<{ status: string; result: AssessmentResult }>(`/students/me/assessments/sessions/${sessionId}/result`);
+        const res = await apiClient.get<{ status: string; result: AssessmentResult }>(`/api/v1/students/me/assessments/sessions/${sessionId}/result`);
         return res.result;
     },
 
-    // Officer Endpoints
-    getOfficerAssessments: async () => {
-        const res = await apiClient.get<{ status: string; assessments: any[] }>('/officer/assessments');
-        return res.assessments || [];
+    // -------------------------------------------------------------
+    // Admin & Placement Officer (TPO) Endpoints (Must use /api/v1/officer/...)
+    // -------------------------------------------------------------
+    getOfficerAssessments: async (params?: { status?: string; all?: boolean }): Promise<OfficerAssessmentItem[]> => {
+        const q = new URLSearchParams();
+        if (params?.status && params.status !== 'ALL') q.set('status', params.status);
+        if (params?.all) q.set('all', '1');
+        const queryStr = q.toString() ? `?${q.toString()}` : '';
+
+        const res = await apiClient.get<{ status: string; assessments: any }>(`/api/v1/officer/assessments${queryStr}`);
+        if (Array.isArray(res.assessments)) {
+            return res.assessments;
+        }
+        if (res.assessments?.data && Array.isArray(res.assessments.data)) {
+            return res.assessments.data;
+        }
+        return [];
     },
 
-    createAssessment: async (payload: any) => {
-        const res = await apiClient.post<{ status: string; assessment: any }>('/officer/assessments', payload);
+    getAssessmentDetails: async (id: number): Promise<OfficerAssessmentItem> => {
+        const res = await apiClient.get<{ status: string; assessment: OfficerAssessmentItem }>(`/api/v1/officer/assessments/${id}`);
         return res.assessment;
     },
 
+    createAssessment: async (payload: any): Promise<OfficerAssessmentItem> => {
+        const res = await apiClient.post<{ status: string; assessment: OfficerAssessmentItem }>('/api/v1/officer/assessments', payload);
+        return res.assessment;
+    },
+
+    updateAssessment: async (id: number, payload: any): Promise<OfficerAssessmentItem> => {
+        const res = await apiClient.put<{ status: string; assessment: OfficerAssessmentItem }>(`/api/v1/officer/assessments/${id}`, payload);
+        return res.assessment;
+    },
+
+    verifyAssessment: async (id: number, notes?: string): Promise<OfficerAssessmentItem> => {
+        const res = await apiClient.post<{ status: string; message: string; assessment: OfficerAssessmentItem }>(
+            `/api/v1/officer/assessments/${id}/verify`,
+            { notes }
+        );
+        return res.assessment;
+    },
+
+    rejectAssessment: async (id: number, reason: string): Promise<OfficerAssessmentItem> => {
+        const res = await apiClient.post<{ status: string; message: string; assessment: OfficerAssessmentItem }>(
+            `/api/v1/officer/assessments/${id}/reject`,
+            { reason }
+        );
+        return res.assessment;
+    },
+
+    submitForVerification: async (id: number): Promise<OfficerAssessmentItem> => {
+        const res = await apiClient.post<{ status: string; message: string; assessment: OfficerAssessmentItem }>(
+            `/api/v1/officer/assessments/${id}/submit-verification`
+        );
+        return res.assessment;
+    },
+
+    deleteAssessment: async (id: number): Promise<void> => {
+        await apiClient.delete(`/api/v1/officer/assessments/${id}`);
+    },
+
     publishAssessment: async (id: number) => {
-        return await apiClient.post(`/officer/assessments/${id}/publish`);
+        return await apiClient.post(`/api/v1/officer/assessments/${id}/publish`);
     },
 
     generateAiQuestions: async (sourceText: string, type = 'MCQ', difficulty = 'MEDIUM', count = 3) => {
-        return await apiClient.post('/officer/assessments/generate-questions', {
+        return await apiClient.post('/api/v1/officer/assessments/generate-questions', {
             source_text: sourceText,
             type,
             difficulty,
@@ -171,6 +313,6 @@ export const assessmentsApi = {
     },
 
     approveQuestion: async (questionId: number, overrides?: any) => {
-        return await apiClient.post(`/officer/assessments/questions/${questionId}/approve`, overrides || {});
+        return await apiClient.post(`/api/v1/officer/assessments/questions/${questionId}/approve`, overrides || {});
     },
 };

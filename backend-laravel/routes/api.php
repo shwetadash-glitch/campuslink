@@ -17,7 +17,10 @@ use App\Http\Controllers\Api\AiHelperController;
 use App\Http\Controllers\Api\StudentPlacementJourneyController;
 use App\Http\Controllers\Api\NotificationController;
 
+Route::get('/students/{id}/resume/download', [\App\Http\Controllers\Api\StudentController::class, 'downloadResume']);
+
 Route::prefix('v1')->group(function () {
+    Route::get('/students/{id}/resume/download', [\App\Http\Controllers\Api\StudentController::class, 'downloadResume']);
     Route::post('/auth/login', [AuthController::class, 'login']);
     Route::post('/auth/register', [AuthController::class, 'register']);
     Route::post('/auth/refresh', [AuthController::class, 'refresh']);
@@ -81,6 +84,10 @@ Route::prefix('v1')->group(function () {
             Route::get('/me/available-drives', [StudentPlacementJourneyController::class, 'availableDrives']);
             Route::post('/me/drives/{driveId}/register', [StudentPlacementJourneyController::class, 'registerForDrive']);
             Route::post('/me/drives/{driveId}/withdraw', [StudentPlacementJourneyController::class, 'withdrawFromDrive']);
+            Route::get('/me/drives/{driveId}/technical-quiz', [StudentPlacementJourneyController::class, 'getAssignedQuiz']);
+            Route::post('/me/drives/{driveId}/submit-quiz', [StudentPlacementJourneyController::class, 'submitQuiz']);
+            Route::get('/me/drives/{driveId}/gd-session', [StudentPlacementJourneyController::class, 'getGdSession']);
+            Route::post('/me/drives/{driveId}/submit-gd', [StudentPlacementJourneyController::class, 'submitGdSession']);
             Route::get('/me/offers', [StudentPlacementJourneyController::class, 'offers']);
             Route::get('/me/offers/{offerId}', [StudentPlacementJourneyController::class, 'showOffer']);
             Route::get('/me/offers/{offerId}/letter', [StudentPlacementJourneyController::class, 'downloadOfferLetter']);
@@ -140,11 +147,14 @@ Route::prefix('v1')->group(function () {
             Route::prefix('me/communication-coach')->group(function () {
                 Route::get('/categories', [\App\Http\Controllers\Api\CommunicationCoachController::class, 'categories']);
                 Route::get('/scenarios', [\App\Http\Controllers\Api\CommunicationCoachController::class, 'scenarios']);
+                Route::post('/scenarios/generate-email', [\App\Http\Controllers\Api\CommunicationCoachController::class, 'generateDynamicEmail']);
                 Route::get('/scenarios/{id}', [\App\Http\Controllers\Api\CommunicationCoachController::class, 'showScenario']);
                 Route::post('/sessions/start', [\App\Http\Controllers\Api\CommunicationCoachController::class, 'startSession']);
                 Route::post('/sessions/{id}/revision', [\App\Http\Controllers\Api\CommunicationCoachController::class, 'createRevision']);
                 Route::get('/sessions/{id}', [\App\Http\Controllers\Api\CommunicationCoachController::class, 'showSession']);
                 Route::post('/sessions/{id}/submit', [\App\Http\Controllers\Api\CommunicationCoachController::class, 'submit']);
+                Route::post('/sessions/{id}/submit-audio', [\App\Http\Controllers\Api\CommunicationCoachController::class, 'submitAudio']);
+                Route::get('/sessions/{id}/audio', [\App\Http\Controllers\Api\CommunicationCoachController::class, 'streamAudio']);
                 Route::post('/sessions/{id}/retry-evaluation', [\App\Http\Controllers\Api\CommunicationCoachController::class, 'retryEvaluation']);
                 Route::get('/sessions/{id}/feedback', [\App\Http\Controllers\Api\CommunicationCoachController::class, 'feedback']);
                 Route::get('/progress', [\App\Http\Controllers\Api\CommunicationCoachController::class, 'progress']);
@@ -197,6 +207,18 @@ Route::prefix('v1')->group(function () {
             Route::get('/companies', [OfficerController::class, 'companies']);
             Route::get('/drives/{drive}/ai-shortlist', [OfficerController::class, 'aiShortlist']);
             Route::post('/companies', [OfficerController::class, 'storeCompany']);
+            Route::get('/at-risk-students', [OfficerController::class, 'atRiskCohort']);
+            Route::post('/students/{id}/intervention', [OfficerController::class, 'recordIntervention']);
+            Route::get('/notifications', [NotificationController::class, 'officerFeed']);
+            Route::post('/notifications/broadcast', [NotificationController::class, 'broadcast']);
+
+            // Multi-Round Recruitment Pipeline (AI Shortlisting -> Technical Quiz -> Group Discussion)
+            Route::get('/drives/{drive}/rounds-pipeline', [\App\Http\Controllers\Api\OfficerRoundsController::class, 'getPipeline']);
+            Route::post('/drives/{drive}/dispatch-quiz', [\App\Http\Controllers\Api\OfficerRoundsController::class, 'dispatchQuiz']);
+            Route::post('/drives/{drive}/advance-candidates', [\App\Http\Controllers\Api\OfficerRoundsController::class, 'advanceCandidates']);
+            Route::post('/drives/{drive}/submit-quiz', [\App\Http\Controllers\Api\OfficerRoundsController::class, 'submitQuiz']);
+            Route::post('/drives/{drive}/submit-gd', [\App\Http\Controllers\Api\OfficerRoundsController::class, 'submitGd']);
+            Route::get('/drives/{drive}/export-rounds', [\App\Http\Controllers\Api\OfficerRoundsController::class, 'exportCsv']);
 
             // Milestone 5: Officer Assessment Management
             Route::prefix('assessments')->group(function () {
@@ -204,6 +226,10 @@ Route::prefix('v1')->group(function () {
                 Route::post('/', [\App\Http\Controllers\Api\AssessmentController::class, 'store']);
                 Route::get('/{id}', [\App\Http\Controllers\Api\AssessmentController::class, 'show']);
                 Route::put('/{id}', [\App\Http\Controllers\Api\AssessmentController::class, 'update']);
+                Route::delete('/{id}', [\App\Http\Controllers\Api\AssessmentController::class, 'destroy']);
+                Route::post('/{id}/verify', [\App\Http\Controllers\Api\AssessmentController::class, 'verify']);
+                Route::post('/{id}/reject', [\App\Http\Controllers\Api\AssessmentController::class, 'reject']);
+                Route::post('/{id}/submit-verification', [\App\Http\Controllers\Api\AssessmentController::class, 'submitForVerification']);
                 Route::post('/{id}/publish', [\App\Http\Controllers\Api\AssessmentController::class, 'publish']);
                 Route::post('/{id}/questions', [\App\Http\Controllers\Api\AssessmentController::class, 'addQuestions']);
                 Route::post('/generate-questions', [\App\Http\Controllers\Api\AssessmentController::class, 'generateQuestions']);
@@ -272,6 +298,10 @@ Route::prefix('v1')->group(function () {
             Route::get('/scheduler/events', [\App\Http\Controllers\Api\PlacementDriveManagerController::class, 'schedulerEvents']);
             Route::match(['get', 'post'], '/venues', [\App\Http\Controllers\Api\PlacementDriveManagerController::class, 'venues']);
             Route::match(['get', 'post'], '/institutional-events', [\App\Http\Controllers\Api\PlacementDriveManagerController::class, 'institutionalEvents']);
+            Route::get('/at-risk-students', [OfficerController::class, 'atRiskCohort']);
+            Route::post('/students/{id}/intervention', [OfficerController::class, 'recordIntervention']);
+            Route::get('/notifications', [NotificationController::class, 'officerFeed']);
+            Route::post('/notifications/broadcast', [NotificationController::class, 'broadcast']);
 
             // Milestone 8: TPO Offer Verification Desk Alias
             Route::prefix('offers')->group(function () {

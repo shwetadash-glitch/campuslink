@@ -31,6 +31,24 @@ class MockAiProvider implements AiProviderInterface
 
     public function generate(string $prompt, ?array $jsonSchema = null, array $options = []): array|string
     {
+        // Dynamic Professional Email Topic Generation prompt
+        if (str_contains(strtolower($prompt), 'corporate communications director') || str_contains(strtolower($prompt), 'email writing scenario')) {
+            return [
+                'title' => 'Stakeholder Alignment: Production Latency Escalation',
+                'context_scenario' => 'A recent microservices rollout resulted in intermittent latency spikes on customer transaction processing. The VP of Product has flagged customer escalations and requires an immediate explanation and mitigation roadmap.',
+                'target_audience' => 'VP of Product concerned about customer trust and SLA compliance',
+                'prompt_text' => 'Draft a professional incident update email. Acknowledge the latency issue, summarize the immediate mitigations applied, explain the permanent database index fix, and propose an alignment check-in.',
+                'difficulty' => 'INTERMEDIATE',
+                'min_word_limit' => 80,
+                'max_word_limit' => 250,
+                'recommended_min_words' => 120,
+                'recommended_max_words' => 180,
+                'key_focus_areas' => ['Ownership', 'Technical Clarity', 'Executive Brevity', 'Actionable Next Steps'],
+                'curated_factual_guidance' => 'Focus on root-cause transparency, avoid defensive jargon, and outline measurable SLAs.',
+                'rubric_special_instructions' => 'Assess executive presence and tone calibration.'
+            ];
+        }
+
         // Communication Skills Coach Evaluation prompt
         if (str_contains(strtolower($prompt), 'communication coach') || str_contains($prompt, 'untrusted_student_response')) {
             $studentText = '';

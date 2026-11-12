@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Notification;
 use App\Models\NotificationPreference;
+use App\Models\Student;
+use App\Models\DriveCandidate;
 use App\Services\NotificationService;
 use Carbon\Carbon;
 
@@ -129,6 +131,93 @@ class NotificationController extends Controller
         return response()->json([
             'status' => 'success',
             'preferences' => $all,
+        ]);
+    }
+
+    /**
+     * Officer system-wide notification dispatch feed with telemetry summary.
+     */
+    public function officerFeed(Request $request)
+    {
+        $query = Notification::with('user')->orderBy('created_at', 'desc');
+
+        if ($request->filled('type') && $request->type !== 'ALL') {
+            $query->where('notification_type', $request->type);
+        }
+
+        if ($request->filled('status') && $request->status !== 'ALL') {
+            $query->where('status', $request->status);
+        }
+
+        $perPage = (int) $request->get('per_page', 25);
+        $notifications = $query->paginate($perPage);
+
+        $totalDispatched = Notification::count();
+        $deliveredCount = Notification::whereIn('status', ['DELIVERED', 'SENT'])->count();
+        $readCount = Notification::where('status', 'READ')->count();
+
+        return response()->json([
+            'status' => 'success',
+            'summary' => [
+                'total_dispatched' => $totalDispatched,
+                'delivered_count' => $deliveredCount,
+                'read_count' => $readCount,
+                'read_rate_percent' => $totalDispatched > 0 ? round(($readCount / $totalDispatched) * 100, 1) : 0,
+            ],
+            'data' => $notifications->items(),
+            'total' => $notifications->total(),
+            'current_page' => $notifications->currentPage(),
+            'last_page' => $notifications->lastPage(),
+        ]);
+    }
+
+    /**
+     * Broadcast notification bulletin to students by branch or drive.
+     */
+    public function broadcast(Request $request)
+    {
+        $validated = $request->validate([
+            'title' => 'required|string|max:255',
+            'message' => 'required|string',
+            'target_type' => 'required|string|in:ALL_STUDENTS,BRANCH,DRIVE_APPLICANTS',
+            'target_value' => 'nullable|string',
+            'priority' => 'nullable|string|in:NORMAL,URGENT,CRITICAL',
+        ]);
+
+        $query = Student::whereNotNull('user_id');
+        if ($validated['target_type'] === 'BRANCH' && !empty($validated['target_value']) && $validated['target_value'] !== 'ALL' && $validated['target_value'] !== 'All Branches') {
+            $query->where('branch', $validated['target_value']);
+        } elseif ($validated['target_type'] === 'DRIVE_APPLICANTS' && !empty($validated['target_value'])) {
+            $driveId = (int) $validated['target_value'];
+            $studentIds = DriveCandidate::where('drive_id', $driveId)->pluck('student_id');
+            $query->whereIn('id', $studentIds);
+        }
+
+        $students = $query->get();
+        $dispatchedCount = 0;
+
+        foreach ($students as $student) {
+            $notif = $this->notificationService->sendNotification([
+                'user_id' => $student->user_id,
+                'type' => 'OFFICER_BROADCAST_BULLETIN',
+                'title' => $validated['title'],
+                'message' => $validated['message'],
+                'metadata' => [
+                    'target_type' => $validated['target_type'],
+                    'target_value' => $validated['target_value'] ?? null,
+                    'priority' => $validated['priority'] ?? 'NORMAL',
+                    'sender_id' => $request->user()->id,
+                ],
+                'channel' => 'IN_APP',
+                'force_sync' => true,
+            ]);
+            if ($notif) $dispatchedCount++;
+        }
+
+        return response()->json([
+            'status' => 'success',
+            'message' => "Broadcast successfully dispatched to {$dispatchedCount} candidates.",
+            'dispatched_count' => $dispatchedCount,
         ]);
     }
 }

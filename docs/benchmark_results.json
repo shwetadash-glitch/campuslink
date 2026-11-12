@@ -1,0 +1,46 @@
+{
+    "timestamp": "2026-11-12T16:39:37+00:00",
+    "dataset": {
+        "student_count": 125,
+        "job_count": 16,
+        "total_evaluations": 2000
+    },
+    "latency": {
+        "throughput_per_sec": 63.3,
+        "mean_ms": 15.8,
+        "min_ms": 6.91,
+        "max_ms": 116.643,
+        "p50_ms": 14.651,
+        "p75_ms": 18.862,
+        "p90_ms": 22.617,
+        "p95_ms": 25.245,
+        "p99_ms": 31.324
+    },
+    "eligibility": {
+        "eligible_count": 1324,
+        "disqualified_count": 676,
+        "precision": 1,
+        "recall": 1
+    },
+    "fit_scores": {
+        "mean_fit": 16.71,
+        "std_dev": 22.78,
+        "mean_readiness": 44.88,
+        "tiers": {
+            "highly_employable": 35,
+            "qualified": 65,
+            "not_ready": 1900
+        }
+    },
+    "skill_gaps": {
+        "total_evaluated": 10000,
+        "matched": 680,
+        "partial": 302,
+        "missing": 9018
+    },
+    "conflict_engine": {
+        "simulated_checks": 100,
+        "p50_ms": 2.643,
+        "p95_ms": 9.42
+    }
+}

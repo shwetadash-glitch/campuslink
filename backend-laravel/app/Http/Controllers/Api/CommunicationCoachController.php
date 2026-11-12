@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Services\Communication\CommunicationCoachService;
+use App\Services\Communication\CommunicationTopicGeneratorService;
 use App\Models\CommunicationScenario;
 use App\Models\CommunicationPracticeSession;
 use App\Models\Student;
@@ -15,15 +16,20 @@ use App\Exceptions\InferenceTimeoutException;
 use App\Exceptions\AiServiceUnavailableException;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 
 class CommunicationCoachController extends Controller
 {
     protected CommunicationCoachService $coachService;
+    protected CommunicationTopicGeneratorService $topicGeneratorService;
 
-    public function __construct(CommunicationCoachService $coachService)
-    {
+    public function __construct(
+        CommunicationCoachService $coachService,
+        CommunicationTopicGeneratorService $topicGeneratorService
+    ) {
         $this->coachService = $coachService;
+        $this->topicGeneratorService = $topicGeneratorService;
     }
 
     /**
@@ -373,5 +379,114 @@ class CommunicationCoachController extends Controller
         $sessions = $query->paginate(15);
 
         return response()->json($sessions);
+    }
+
+    /**
+     * Generate a dynamic workplace email writing scenario for the student.
+     */
+    public function generateDynamicEmail(Request $request): JsonResponse
+    {
+        $student = $this->getAuthenticatedStudent($request);
+
+        $validated = $request->validate([
+            'difficulty' => 'nullable|string|in:BEGINNER,INTERMEDIATE,ADVANCED',
+            'domain' => 'nullable|string|max:100',
+        ]);
+
+        $difficulty = $validated['difficulty'] ?? 'INTERMEDIATE';
+        $domain = $validated['domain'] ?? null;
+
+        $scenario = $this->topicGeneratorService->generateForStudent($student, $difficulty, $domain);
+        $session = $this->coachService->startNewAttempt($student, $scenario->id);
+
+        return response()->json([
+            'message' => 'Dynamic professional email scenario generated successfully.',
+            'scenario' => $scenario->toStudentArray(),
+            'session' => $session->load(['scenario', 'feedback']),
+        ], 201);
+    }
+
+    /**
+     * Submit spoken audio recording and transcript for spoken delivery evaluation.
+     */
+    public function submitAudio(Request $request, int $id): JsonResponse
+    {
+        $student = $this->getAuthenticatedStudent($request);
+
+        $session = CommunicationPracticeSession::where('student_id', $student->id)
+            ->with('scenario')
+            ->findOrFail($id);
+
+        $request->validate([
+            'audio' => 'nullable|file|max:25600', // 25MB max
+            'transcript' => 'required|string',
+            'telemetry' => 'nullable|array',
+            'duration_seconds' => 'nullable|numeric|min:1',
+        ]);
+
+        $audioFile = $request->file('audio');
+        $transcript = $request->input('transcript');
+        $telemetry = $request->input('telemetry', []);
+
+        if ($request->has('duration_seconds') && !isset($telemetry['duration_seconds'])) {
+            $telemetry['duration_seconds'] = (float) $request->input('duration_seconds');
+        }
+
+        try {
+            $result = $this->coachService->submitAudioAndEvaluate($session, $audioFile, $transcript, $telemetry);
+
+            return response()->json([
+                'message' => 'Spoken delivery evaluated successfully.',
+                'session' => $result['session'],
+                'feedback' => $result['feedback'],
+            ]);
+        } catch (EvaluationClaimConflictException $e) {
+            return response()->json([
+                'error' => 'EVALUATION_CLAIM_CONFLICT',
+                'message' => $e->getMessage(),
+            ], 409);
+        } catch (InferenceTimeoutException $e) {
+            return response()->json([
+                'error' => 'INFERENCE_TIMEOUT',
+                'message' => $e->getMessage(),
+                'can_retry' => true,
+            ], 504);
+        } catch (MalformedAiResponseException $e) {
+            return response()->json([
+                'error' => 'MALFORMED_AI_RESPONSE',
+                'message' => $e->getMessage(),
+                'can_retry' => true,
+            ], 502);
+        } catch (AiServiceUnavailableException $e) {
+            return response()->json([
+                'error' => 'AI_SERVICE_UNAVAILABLE',
+                'message' => $e->getMessage(),
+                'can_retry' => true,
+            ], 503);
+        }
+    }
+
+    /**
+     * Stream or download recorded audio for playback.
+     */
+    public function streamAudio(Request $request, int $id)
+    {
+        $student = $this->getAuthenticatedStudent($request);
+
+        $session = CommunicationPracticeSession::where('student_id', $student->id)
+            ->findOrFail($id);
+
+        if (!$session->audio_storage_path || !Storage::disk('local')->exists($session->audio_storage_path)) {
+            abort(404, "Recorded audio file not found.");
+        }
+
+        $mime = $session->audio_mime_type ?: 'audio/webm';
+        $path = Storage::disk('local')->path($session->audio_storage_path);
+
+        return response()->file($path, [
+            'Content-Type' => $mime,
+            'Accept-Ranges' => 'bytes',
+            'Cache-Control' => 'private, max-age=3600',
+        ]);
     }
 }

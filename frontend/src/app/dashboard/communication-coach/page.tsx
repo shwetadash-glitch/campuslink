@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
@@ -14,11 +15,26 @@ import {
 } from "@/services/communicationCoachApi";
 
 export default function CommunicationCoachHubPage() {
+  const router = useRouter();
   const [categories, setCategories] = useState<CommunicationCategoryInfo[]>([]);
   const [scenarios, setScenarios] = useState<CommunicationScenarioItem[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>("ALL");
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Dynamic Email Generation states
+  const [generatingEmail, setGeneratingEmail] = useState<boolean>(false);
+  const [selectedDomain, setSelectedDomain] = useState<string>("All Domains");
+  const [selectedDifficulty, setSelectedDifficulty] = useState<string>("INTERMEDIATE");
+
+  const emailDomains = [
+    "All Domains",
+    "Cloud Infrastructure & Reliability",
+    "Enterprise SaaS & Billing",
+    "Cybersecurity & Data Privacy Incident",
+    "Fintech Payment Orchestration",
+    "Cross-Functional Product Launch",
+  ];
 
   useEffect(() => {
     loadData();
@@ -41,6 +57,26 @@ export default function CommunicationCoachHubPage() {
     }
   };
 
+  const handleGenerateDynamicEmail = async () => {
+    setGeneratingEmail(true);
+    setError(null);
+    try {
+      const payload: { difficulty?: string; domain?: string } = {
+        difficulty: selectedDifficulty,
+      };
+      if (selectedDomain !== "All Domains") {
+        payload.domain = selectedDomain;
+      }
+
+      const res = await communicationCoachApi.generateDynamicEmail(payload);
+      // Navigate directly into practice session for the newly generated scenario
+      router.push(`/dashboard/communication-coach/practice/${res.scenario.id}`);
+    } catch (err: any) {
+      setError(err?.message || "Failed to generate dynamic email challenge.");
+      setGeneratingEmail(false);
+    }
+  };
+
   const filteredScenarios =
     selectedCategory === "ALL"
       ? scenarios
@@ -60,7 +96,7 @@ export default function CommunicationCoachHubPage() {
     <AppLayout allowedRoles={["STUDENT"]}>
       <PageHeader
         title="AI Communication Skills Coach"
-        subtitle="Practice, evaluate, and refine workplace communication across professional scenarios."
+        subtitle="Practice spoken delivery, presentation structures, and workplace email writing."
       />
 
       {error && (
@@ -73,11 +109,11 @@ export default function CommunicationCoachHubPage() {
       <div className="mb-8 grid grid-cols-1 md:grid-cols-3 gap-6">
         <Card className="p-6 bg-gradient-to-br from-campusblue-900 to-campusblue-800 text-white md:col-span-2 shadow-sm border-0">
           <span className="text-2xs uppercase tracking-widest text-campusblue-200 font-bold block mb-1">
-            Formative Skill Development
+            Formative Skill Development & Spoken Delivery
           </span>
-          <h2 className="text-xl sm:text-2xl font-black mb-2">Master Professional Communication</h2>
+          <h2 className="text-xl sm:text-2xl font-black mb-2">Master Spoken & Written Communication</h2>
           <p className="text-xs text-campusblue-100 max-w-xl leading-relaxed mb-4">
-            Practice structuring emails, framing technical trade-offs for non-engineers, interjecting constructively in group discussions, and pitching capstone ideas.
+            Practice microphone-captured technical explanations, structured speaking frameworks (PREP & STAR), and dynamic on-demand executive email challenges.
           </p>
           <div className="flex flex-wrap gap-4 items-center">
             <Link href="#practice-scenarios">
@@ -98,15 +134,72 @@ export default function CommunicationCoachHubPage() {
             <span className="text-2xs text-campusblue-600 uppercase font-bold block mb-1">Your Journey</span>
             <h3 className="text-sm font-bold text-campusblue-900 mb-4">Completed Practice Sessions</h3>
             <div className="text-3xl font-black text-campusblue-900 mb-1">{totalCompleted}</div>
-            <p className="text-xs text-campusblue-500">Structured written exercises completed.</p>
+            <p className="text-xs text-campusblue-500">Spoken and written exercises evaluated.</p>
           </div>
           <div className="mt-4 pt-3 border-t border-campusblue-50">
             <span className="text-2xs text-slate-500 italic block">
-              7-dimension rubric: Clarity, Tone, Audience Adaptation, Grammar, Relevance...
+              Graded on E-to-D Scale (Exemplary to Deficient) + Pacing (WPM) & Fillers
             </span>
           </div>
         </Card>
       </div>
+
+      {/* Dynamic Email Generator Banner */}
+      <Card className="mb-8 p-6 bg-gradient-to-r from-purple-900 via-indigo-900 to-campusblue-900 text-white border-0 shadow-md">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <span className="text-2xs uppercase tracking-widest text-purple-200 font-bold">
+                ⚡ Dynamic Scenario Engine
+              </span>
+              <span className="px-2 py-0.5 text-2xs font-bold rounded-full bg-purple-500/30 text-purple-200 border border-purple-400/40">
+                Anti-Repetition AI
+              </span>
+            </div>
+            <h3 className="text-lg font-black">Generate a Fresh Workplace Email Challenge</h3>
+            <p className="text-xs text-purple-100 max-w-xl leading-relaxed">
+              Facing realistic, unpredictable workplace situations builds genuine agility. Generate a context-rich scenario tailored to your chosen domain and difficulty.
+            </p>
+
+            {/* Filter Chips */}
+            <div className="flex flex-wrap gap-2 pt-2">
+              {emailDomains.map((domain) => (
+                <button
+                  key={domain}
+                  onClick={() => setSelectedDomain(domain)}
+                  className={`px-2.5 py-1 rounded-full text-2xs font-semibold transition ${
+                    selectedDomain === domain
+                      ? "bg-white text-purple-950 font-bold shadow-sm"
+                      : "bg-white/10 text-purple-200 hover:bg-white/20"
+                  }`}
+                >
+                  {domain}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 shrink-0">
+            <select
+              value={selectedDifficulty}
+              onChange={(e) => setSelectedDifficulty(e.target.value)}
+              className="bg-white/10 text-white border border-white/20 text-xs rounded-lg px-3 py-2 outline-none"
+            >
+              <option value="BEGINNER" className="text-slate-900">Beginner</option>
+              <option value="INTERMEDIATE" className="text-slate-900">Intermediate</option>
+              <option value="ADVANCED" className="text-slate-900">Advanced</option>
+            </select>
+
+            <Button
+              onClick={handleGenerateDynamicEmail}
+              disabled={generatingEmail}
+              className="bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-xs px-5 py-2.5 shadow-lg"
+            >
+              {generatingEmail ? "⚡ Synthesizing Topic..." : "⚡ Generate Fresh Email Scenario"}
+            </Button>
+          </div>
+        </div>
+      </Card>
 
       {/* Category Grid */}
       <div className="mb-8">
@@ -135,7 +228,7 @@ export default function CommunicationCoachHubPage() {
               className={`p-4 rounded-xl text-left border transition ${
                 selectedCategory === cat.key
                   ? "bg-campusblue-50 border-campusblue-600 shadow-sm ring-1 ring-campusblue-600"
-                : "bg-white border-campusblue-100 hover:border-campusblue-300"
+                  : "bg-white border-campusblue-100 hover:border-campusblue-300"
               }`}
             >
               <div className="text-2xl mb-2">{categoryIcons[cat.key] || "📝"}</div>
@@ -172,9 +265,16 @@ export default function CommunicationCoachHubPage() {
             {filteredScenarios.map((scen) => (
               <Card key={scen.id} className="p-5 bg-white border border-campusblue-100 hover:border-campusblue-300 hover:shadow-md transition">
                 <div className="flex justify-between items-start gap-2 mb-2">
-                  <span className="text-2xs font-bold uppercase tracking-wider text-campusblue-600">
-                    {scen.category.replace("_", " ")}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-2xs font-bold uppercase tracking-wider text-campusblue-600">
+                      {scen.category.replace("_", " ")}
+                    </span>
+                    {scen.is_dynamic && (
+                      <span className="px-2 py-0.5 text-3xs font-black uppercase tracking-wider bg-purple-100 text-purple-800 border border-purple-300 rounded-full">
+                        ✨ AI Generated
+                      </span>
+                    )}
+                  </div>
                   <StatusBadge status={scen.difficulty} size="sm" />
                 </div>
                 <h4 className="text-sm font-bold text-campusblue-900 mb-1">{scen.title}</h4>

@@ -1,59 +1,79 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { adminApi } from "@/services/adminApi";
 
-const INITIAL_EVENTS = [
-  { id: 1, name: "TechCorp Aptitude Test", date: "Oct 15, 2026", time: "10:00 AM - 12:00 PM", location: "Computer Center Labs", type: "TEST", conflict: false, description: "Initial screening test focusing on quantitative aptitude, logical reasoning, and basic programming concepts for all registered candidates." },
-  { id: 2, name: "Innovate Technical Interviews", date: "Oct 15, 2026", time: "01:00 PM - 05:00 PM", location: "Interview Rooms A & B", type: "INTERVIEW", conflict: false, description: "One-on-one technical interview rounds for candidates who cleared the initial screening. Focuses on data structures and algorithms." },
-  { id: 3, name: "Global Systems Pre-Placement Talk", date: "Oct 16, 2026", time: "09:30 AM - 11:00 AM", location: "Main Auditorium", type: "PPT", conflict: false, description: "An introductory session by Global Systems executives discussing company culture, role expectations, and career growth." },
-  { id: 4, name: "NextGen AI Coding Round", date: "Oct 16, 2026", time: "10:00 AM - 01:00 PM", location: "Virtual (HackerRank)", type: "TEST", conflict: true, description: "Intensive 3-hour competitive coding assessment on HackerRank evaluating problem-solving skills for the Machine Learning Engineer role." },
-];
-
 const MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
 export default function SchedulerPage() {
-  const [selectedDate, setSelectedDate] = useState("Oct 16, 2026");
+  // Calendar defaults to active system date (Nov 2026)
+  const [currentMonthDate, setCurrentMonthDate] = useState(new Date(2026, 10)); // November 2026
+  const [selectedDate, setSelectedDate] = useState("Nov 16, 2026");
   const [viewMode, setViewMode] = useState<"DAY" | "WEEK">("DAY");
-  
-  const [events, setEvents] = useState(INITIAL_EVENTS);
-  const [ignoredConflicts, setIgnoredConflicts] = useState<number[]>([]);
-  const [isLoaded, setIsLoaded] = useState(false);
-  
-  const [modalState, setModalState] = useState<{ type: string, event?: any, date?: string } | null>(null);
 
-  // Load from API or local storage on mount
-  React.useEffect(() => {
-    let isMounted = true;
-    adminApi.getSchedulerEvents().then((apiEvents) => {
-      if (isMounted && Array.isArray(apiEvents) && apiEvents.length > 0) {
-        setEvents(apiEvents);
+  const [events, setEvents] = useState<any[]>([]);
+  const [drives, setDrives] = useState<any[]>([]);
+  const [venues, setVenues] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [feedback, setFeedback] = useState<{ message: string; type: "success" | "error" | "warning" } | null>(null);
+
+  // Modal State
+  const [modalState, setModalState] = useState<{ type: string; event?: any; date?: string } | null>(null);
+
+  // Conflict state for planning
+  const [conflictChecking, setConflictChecking] = useState(false);
+  const [conflictReport, setConflictReport] = useState<any | null>(null);
+
+  // Form State for Add Event / Round
+  const [scheduleCategory, setScheduleCategory] = useState<"DRIVE_ROUND" | "INSTITUTIONAL_BLACKOUT">("DRIVE_ROUND");
+  const [selectedDriveId, setSelectedDriveId] = useState<number | string>("");
+  const [roundName, setRoundName] = useState("");
+  const [roundType, setRoundType] = useState("INTERVIEW");
+  const [formDate, setFormDate] = useState("2026-11-16");
+  const [startTime, setStartTime] = useState("10:00");
+  const [endTime, setEndTime] = useState("12:00");
+  const [selectedVenue, setSelectedVenue] = useState("Main Auditorium (Audi 1)");
+  const [instructions, setInstructions] = useState("");
+  const [isHardBlackout, setIsHardBlackout] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+
+  // Load scheduler events, drives, and venues
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      const [eventsRes, drivesRes, venuesRes] = await Promise.all([
+        adminApi.getSchedulerEvents("2026-11-01", "2026-11-30"),
+        adminApi.getDrives(),
+        adminApi.getVenues(),
+      ]);
+
+      if (Array.isArray(eventsRes)) {
+        setEvents(eventsRes);
       }
-    }).catch(() => {
-      const savedEvents = localStorage.getItem("scheduler_events");
-      if (savedEvents) setEvents(JSON.parse(savedEvents));
-    });
+      if (Array.isArray(drivesRes)) {
+        setDrives(drivesRes);
+        if (drivesRes.length > 0 && !selectedDriveId) {
+          setSelectedDriveId(drivesRes[0].id);
+        }
+      }
+      if (Array.isArray(venuesRes)) {
+        setVenues(venuesRes);
+      }
+    } catch (err: any) {
+      console.error("Failed to load scheduler data", err);
+      setFeedback({ message: "Failed to connect to backend scheduler service.", type: "error" });
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    const savedIgnored = localStorage.getItem("scheduler_ignored");
-    if (savedIgnored) setIgnoredConflicts(JSON.parse(savedIgnored));
-    setIsLoaded(true);
-
-    return () => { isMounted = false; };
+  useEffect(() => {
+    loadData();
   }, []);
 
-  // Save to local storage on change
-  React.useEffect(() => {
-    if (isLoaded) {
-      localStorage.setItem("scheduler_events", JSON.stringify(events));
-      localStorage.setItem("scheduler_ignored", JSON.stringify(ignoredConflicts));
-    }
-  }, [events, ignoredConflicts, isLoaded]);
-
-  // Calendar State
-  const [currentMonthDate, setCurrentMonthDate] = useState(new Date(2026, 9)); // Default to Oct 2026 (0-indexed month)
-  
+  // Calendar Helpers
   const getDaysInMonth = (year: number, month: number) => new Date(year, month + 1, 0).getDate();
   const getFirstDayOfMonth = (year: number, month: number) => new Date(year, month, 1).getDay();
 
@@ -72,168 +92,338 @@ export default function SchedulerPage() {
   const getStartOfWeek = (dateStr: string) => {
     const d = new Date(dateStr);
     const day = d.getDay();
-    const diff = d.getDate() - day; // Adjust to Sunday
+    const diff = d.getDate() - day;
     return new Date(d.setDate(diff));
   };
-  
+
   const getEndOfWeek = (dateStr: string) => {
     const d = getStartOfWeek(dateStr);
     return new Date(d.setDate(d.getDate() + 6));
   };
-  
+
   const isEventInSelectedWeek = (eventDateStr: string, selectedDateStr: string) => {
     const eventDate = new Date(eventDateStr);
     const startOfWeek = getStartOfWeek(selectedDateStr);
     const endOfWeek = getEndOfWeek(selectedDateStr);
-    eventDate.setHours(0,0,0,0);
-    startOfWeek.setHours(0,0,0,0);
-    endOfWeek.setHours(23,59,59,999);
+    eventDate.setHours(0, 0, 0, 0);
+    startOfWeek.setHours(0, 0, 0, 0);
+    endOfWeek.setHours(23, 59, 59, 999);
     return eventDate >= startOfWeek && eventDate <= endOfWeek;
   };
 
-  const displayedEvents = viewMode === "DAY" 
-    ? events.filter(e => e.date === selectedDate)
-    : events.filter(e => isEventInSelectedWeek(e.date, selectedDate));
+  const displayedEvents = useMemo(() => {
+    return viewMode === "DAY"
+      ? events.filter((e) => e.date === selectedDate)
+      : events.filter((e) => isEventInSelectedWeek(e.date, selectedDate));
+  }, [events, selectedDate, viewMode]);
 
-  const handleIgnore = (id: number) => {
-    setIgnoredConflicts([...ignoredConflicts, id]);
-  };
+  // Live Conflict Detection Engine Check
+  const checkConflicts = async (dateVal: string, startVal: string, endVal: string, venueVal: string, driveIdVal?: number) => {
+    try {
+      setConflictChecking(true);
+      const startIso = `${dateVal}T${startVal}:00`;
+      const endIso = `${dateVal}T${endVal}:00`;
 
-  const updateConflicts = (currentEvents: any[]) => {
-    return currentEvents.map(ev => {
-      // Detect conflict: Same date and same time slot
-      const hasConflict = currentEvents.some(other => other.id !== ev.id && other.date === ev.date && other.time === ev.time);
-      return { ...ev, conflict: hasConflict };
-    });
-  };
+      const report = await adminApi.detectConflicts({
+        start_time: startIso,
+        end_time: endIso,
+        venue: venueVal,
+        drive_id: driveIdVal ? Number(driveIdVal) : undefined,
+      });
 
-  const handleResolve = (id: number, action: string) => {
-    if (action === "RESCHEDULE_NEXTGEN") {
-      const updated = events.map(e => e.id === id ? { ...e, time: "02:00 PM - 05:00 PM" } : e);
-      setEvents(updateConflicts(updated));
+      setConflictReport(report);
+      return report;
+    } catch (err: any) {
+      console.error("Conflict check failed", err);
+      return null;
+    } finally {
+      setConflictChecking(false);
     }
-    setModalState(null);
   };
 
-  const handleSaveTime = (id: number, newTime: string) => {
-    const updated = events.map(e => e.id === id ? { ...e, time: newTime } : e);
-    setEvents(updateConflicts(updated));
-    setModalState(null);
+  const openAddModal = (dateStr?: string) => {
+    const defaultDate = dateStr || selectedDate;
+    // Parse "Nov 16, 2026" to "2026-11-16"
+    try {
+      const d = new Date(defaultDate);
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, "0");
+      const day = String(d.getDate()).padStart(2, "0");
+      setFormDate(`${y}-${m}-${day}`);
+    } catch {
+      setFormDate("2026-11-16");
+    }
+
+    setRoundName("");
+    setRoundType("INTERVIEW");
+    setStartTime("10:00");
+    setEndTime("12:00");
+    setSelectedVenue(venues.length > 0 ? venues[0].name : "Main Auditorium (Audi 1)");
+    setConflictReport(null);
+    setModalState({ type: "ADD", date: defaultDate });
+
+    // Initial conflict check
+    setTimeout(() => {
+      checkConflicts("2026-11-16", "10:00", "12:00", venues[0]?.name || "Main Auditorium (Audi 1)", Number(selectedDriveId));
+    }, 100);
   };
 
-  const handleAddEvent = (e: React.FormEvent) => {
+  const handleAdoptAlternative = (slot: any) => {
+    try {
+      const startObj = new Date(slot.start_time);
+      const endObj = new Date(slot.end_time);
+
+      const y = startObj.getFullYear();
+      const m = String(startObj.getMonth() + 1).padStart(2, "0");
+      const d = String(startObj.getDate()).padStart(2, "0");
+      setFormDate(`${y}-${m}-${d}`);
+
+      const sHour = String(startObj.getHours()).padStart(2, "0");
+      const sMin = String(startObj.getMinutes()).padStart(2, "0");
+      setStartTime(`${sHour}:${sMin}`);
+
+      const eHour = String(endObj.getHours()).padStart(2, "0");
+      const eMin = String(endObj.getMinutes()).padStart(2, "0");
+      setEndTime(`${eHour}:${eMin}`);
+
+      if (slot.venue) {
+        setSelectedVenue(slot.venue);
+      }
+
+      setConflictReport({
+        has_conflict: false,
+        has_hard_blackout: false,
+        conflicts: [],
+        alternative_slots: [],
+      });
+
+      setFeedback({
+        message: `Adopted conflict-free alternative slot: ${MONTH_NAMES[startObj.getMonth()]} ${startObj.getDate()} at ${sHour}:${sMin}.`,
+        type: "success",
+      });
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleAddSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const form = e.target as HTMLFormElement;
-    const newEvent = {
-      id: Date.now(),
-      name: (form.elements.namedItem("name") as HTMLInputElement).value,
-      date: modalState?.date || selectedDate,
-      time: (form.elements.namedItem("time") as HTMLSelectElement).value,
-      location: (form.elements.namedItem("location") as HTMLInputElement).value,
-      type: (form.elements.namedItem("type") as HTMLSelectElement).value,
-      conflict: false,
-      description: (form.elements.namedItem("description") as HTMLTextAreaElement).value || "No description provided."
-    };
-    
-    setEvents(updateConflicts([...events, newEvent]));
-    setModalState(null);
-  };
+    try {
+      setSubmitting(true);
+      const startIso = `${formDate}T${startTime}:00`;
+      const endIso = `${formDate}T${endTime}:00`;
 
-  if (!isLoaded) return null;
+      if (scheduleCategory === "DRIVE_ROUND") {
+        if (!selectedDriveId) {
+          alert("Please select a placement drive.");
+          return;
+        }
+
+        const drive = drives.find((d) => d.id === Number(selectedDriveId));
+        const roundNum = (drive?.rounds_count || 0) + 1;
+
+        await adminApi.addDriveRound(Number(selectedDriveId), {
+          round_number: roundNum,
+          name: roundName || `${drive?.name || "Corporate"} Selection Round`,
+          round_type: roundType,
+          start_time: startIso,
+          end_time: endIso,
+          venue: selectedVenue,
+          instructions: instructions || "Mandatory placement round scheduled via Conflict-Free Scheduler.",
+          force: false,
+        });
+
+        setFeedback({
+          message: `Round successfully scheduled for ${drive?.name || "Placement Drive"} at ${selectedVenue} with automated candidate alerts!`,
+          type: "success",
+        });
+      } else {
+        // Institutional Event
+        await adminApi.createInstitutionalEvent({
+          title: roundName || "Institutional Blackout Event",
+          event_type: roundType === "EXAMINATION" ? "EXAMINATION" : "INSTITUTIONAL_BLACKOUT",
+          start_time: startIso,
+          end_time: endIso,
+          affects_branches: ["ALL"],
+          is_hard_blackout: isHardBlackout,
+          notes: instructions || "Institutional blackout period logged in placement schedule.",
+        });
+
+        setFeedback({
+          message: "Institutional blackout event recorded and enforced in conflict engine.",
+          type: "success",
+        });
+      }
+
+      setModalState(null);
+      await loadData();
+    } catch (err: any) {
+      console.error("Failed to schedule event", err);
+      const msg = err?.data?.message || err?.message || "Failed to schedule event due to a conflict or validation error.";
+      setFeedback({ message: msg, type: "error" });
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   return (
     <AppLayout allowedRoles={["PLACEMENT_OFFICER", "SUPER_ADMIN"]}>
-      <PageHeader 
-        title="Conflict-Free Scheduler" 
-        description="Automated placement scheduling engine that eliminates overlaps and optimizes resource allocation." 
-        actionLabel="Schedule Event"
-        onAction={() => setModalState({ type: "ADD", date: selectedDate })}
+      <PageHeader
+        title="Conflict-Free Scheduler & Automated Notifications"
+        description="Automated placement scheduling engine integrated with institutional examination blackouts and candidate notification alerts."
+        actionLabel="Schedule Event / Round"
+        onAction={() => openAddModal()}
       />
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+        {/* Real-time Feedback Banner */}
+        {feedback && (
+          <div
+            className={`p-4 rounded-xl flex items-center justify-between border ${
+              feedback.type === "success"
+                ? "bg-emerald-50 border-emerald-200 text-emerald-800"
+                : feedback.type === "warning"
+                ? "bg-amber-50 border-amber-200 text-amber-800"
+                : "bg-red-50 border-red-200 text-red-800"
+            }`}
+          >
+            <div className="flex items-center gap-2 text-sm font-semibold">
+              {feedback.type === "success" ? (
+                <svg className="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+              ) : (
+                <svg className="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+              )}
+              {feedback.message}
+            </div>
+            <button
+              onClick={() => setFeedback(null)}
+              className="text-xs font-bold uppercase tracking-wider hover:opacity-75"
+            >
+              Dismiss
+            </button>
+          </div>
+        )}
+
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          
           {/* Calendar Sidebar */}
-          <div className="bg-white rounded-xl border border-campusblue-100 shadow-sm p-6">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="font-bold text-campusblue-900">{monthName} {currentYear}</h3>
+          <div className="bg-white rounded-xl border border-campusblue-100 shadow-sm p-6 space-y-6">
+            <div className="flex justify-between items-center">
+              <h3 className="font-bold text-campusblue-900 text-base">
+                {monthName} {currentYear}
+              </h3>
               <div className="flex gap-1">
-                <button onClick={handlePrevMonth} className="p-1.5 rounded bg-campusblue-50 hover:bg-campusblue-100 text-campusblue-700 transition">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+                <button
+                  onClick={handlePrevMonth}
+                  className="p-1.5 rounded-lg bg-campusblue-50 hover:bg-campusblue-100 text-campusblue-700 transition"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                  </svg>
                 </button>
-                <button onClick={handleNextMonth} className="p-1.5 rounded bg-campusblue-50 hover:bg-campusblue-100 text-campusblue-700 transition">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+                <button
+                  onClick={handleNextMonth}
+                  className="p-1.5 rounded-lg bg-campusblue-50 hover:bg-campusblue-100 text-campusblue-700 transition"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
                 </button>
               </div>
             </div>
-            
-            <div className="grid grid-cols-7 gap-2 text-center text-xs font-semibold text-campusblue-500 mb-2">
+
+            <div className="grid grid-cols-7 gap-1 text-center text-[11px] font-bold text-campusblue-400 uppercase">
               <div>Su</div><div>Mo</div><div>Tu</div><div>We</div><div>Th</div><div>Fr</div><div>Sa</div>
             </div>
-            <div className="grid grid-cols-7 gap-2 text-center text-sm">
-              {/* Empty padding blocks for the first week */}
+
+            <div className="grid grid-cols-7 gap-1.5 text-center text-sm">
               {Array.from({ length: firstDay }).map((_, i) => (
-                <div key={`empty-${i}`} className="text-campusblue-200 py-2"></div>
+                <div key={`empty-${i}`} className="py-2"></div>
               ))}
-              
-              {/* Actual Days */}
+
               {Array.from({ length: daysInMonth }).map((_, i) => {
                 const day = i + 1;
-                const dateString = `${monthName} ${day}, ${currentYear}`;
-                const isSelected = selectedDate === dateString;
-                const hasEvents = events.some(e => e.date === dateString);
-                const hasActiveConflict = events.some(e => e.date === dateString && e.conflict && !ignoredConflicts.includes(e.id));
+                const dateString = `${monthName} ${day < 10 ? "0" + day : day}, ${currentYear}`;
+                const dateAlt = `${monthName} ${day}, ${currentYear}`;
+                const isSelected = selectedDate === dateString || selectedDate === dateAlt;
+
+                const dayEvents = events.filter((e) => e.date === dateString || e.date === dateAlt);
+                const hasEvents = dayEvents.length > 0;
+                const hasBlackout = dayEvents.some((e) => e.is_blackout);
+                const hasConflict = dayEvents.some((e) => e.conflict);
 
                 return (
-                  <div 
-                    key={day} 
-                    onClick={() => setSelectedDate(dateString)} 
-                    className={`group py-2 rounded-lg cursor-pointer font-bold relative transition-colors ${
-                      isSelected 
-                        ? "bg-campusblue-700 text-white shadow-md" 
+                  <div
+                    key={day}
+                    onClick={() => setSelectedDate(dateAlt)}
+                    className={`py-2 rounded-lg cursor-pointer font-bold relative transition ${
+                      isSelected
+                        ? "bg-campusblue-700 text-white shadow-md"
+                        : hasBlackout
+                        ? "bg-red-50 text-red-700 hover:bg-red-100 border border-red-200"
+                        : hasConflict
+                        ? "bg-amber-50 text-amber-800 hover:bg-amber-100 border border-amber-200"
                         : hasEvents
-                          ? (hasActiveConflict ? "bg-red-50 text-red-700 hover:bg-red-100" : "bg-campusblue-50 text-campusblue-800 hover:bg-campusblue-50")
-                          : "hover:bg-campusblue-50 text-campusblue-800"
+                        ? "bg-campusblue-50 text-campusblue-900 hover:bg-campusblue-100"
+                        : "hover:bg-campusblue-50 text-slate-700"
                     }`}
                   >
                     {day}
-                    
-                    {/* Add Event Hover Button */}
-                    {!isSelected && (
-                      <button 
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setModalState({ type: "ADD", date: dateString });
-                        }}
-                        className="absolute -top-1 -right-1 w-4 h-4 bg-campusblue-500 hover:bg-campusblue-700 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-sm"
-                        title="Add Event"
-                      >
-                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 4v16m8-8H4" /></svg>
-                      </button>
-                    )}
-
-                    {hasActiveConflict && !isSelected && (
+                    {hasBlackout && !isSelected && (
                       <span className="absolute top-1 right-1 w-1.5 h-1.5 bg-red-500 rounded-full"></span>
+                    )}
+                    {hasEvents && !hasBlackout && !isSelected && (
+                      <span className="absolute top-1 right-1 w-1.5 h-1.5 bg-campusblue-500 rounded-full"></span>
                     )}
                   </div>
                 );
               })}
             </div>
-            
-            <div className="mt-8 border-t border-campusblue-50 pt-6">
-              <h4 className="text-xs font-bold text-campusblue-300 uppercase tracking-wider mb-4">Resource Availability</h4>
-              <div className="space-y-3">
-                <div className="flex justify-between items-center text-sm">
-                  <span className="text-campusblue-700">Computer Labs</span>
-                  <span className="font-bold text-campusblue-900">4 / 10 Used</span>
+
+            {/* Calendar Legend */}
+            <div className="border-t border-campusblue-100 pt-4 space-y-2 text-xs">
+              <div className="font-bold text-campusblue-800 uppercase text-[10px] tracking-wider mb-2">Calendar Key</div>
+              <div className="flex items-center gap-2 text-slate-600">
+                <span className="w-2.5 h-2.5 rounded-full bg-red-500"></span>
+                <span>Institutional Examination / Blackout</span>
+              </div>
+              <div className="flex items-center gap-2 text-slate-600">
+                <span className="w-2.5 h-2.5 rounded-full bg-campusblue-600"></span>
+                <span>Scheduled Placement Drive Round</span>
+              </div>
+              <div className="flex items-center gap-2 text-slate-600">
+                <span className="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
+                <span>Symposium / Soft Blackout Window</span>
+              </div>
+            </div>
+
+            {/* Resource Availability Section */}
+            <div className="border-t border-campusblue-100 pt-4 space-y-3">
+              <h4 className="text-[10px] font-bold text-campusblue-500 uppercase tracking-wider">
+                Auditorium & Lab Utilization
+              </h4>
+              <div className="space-y-2">
+                <div>
+                  <div className="flex justify-between text-xs font-semibold text-slate-700 mb-1">
+                    <span>Main Auditorium</span>
+                    <span className="text-campusblue-700">75% Booked</span>
+                  </div>
+                  <div className="w-full bg-campusblue-100 rounded-full h-1.5">
+                    <div className="bg-campusblue-600 h-1.5 rounded-full" style={{ width: "75%" }}></div>
+                  </div>
                 </div>
-                <div className="w-full bg-campusblue-50 rounded-full h-1.5"><div className="bg-campusblue-500 h-1.5 rounded-full w-2/5"></div></div>
-                
-                <div className="flex justify-between items-center text-sm pt-2">
-                  <span className="text-campusblue-700">Interview Rooms</span>
-                  <span className="font-bold text-campusblue-900">8 / 8 Used</span>
+                <div>
+                  <div className="flex justify-between text-xs font-semibold text-slate-700 mb-1">
+                    <span>Computing Labs (3 & 4)</span>
+                    <span className="text-emerald-700">Available</span>
+                  </div>
+                  <div className="w-full bg-emerald-100 rounded-full h-1.5">
+                    <div className="bg-emerald-500 h-1.5 rounded-full" style={{ width: "35%" }}></div>
+                  </div>
                 </div>
-                <div className="w-full bg-campusblue-50 rounded-full h-1.5"><div className="bg-campusblue-500 h-1.5 rounded-full w-full"></div></div>
               </div>
             </div>
           </div>
@@ -241,255 +431,481 @@ export default function SchedulerPage() {
           {/* Schedule View */}
           <div className="lg:col-span-2">
             <div className="bg-white rounded-xl border border-campusblue-100 shadow-sm overflow-hidden">
-              <div className="px-6 py-5 border-b border-campusblue-50 bg-campusblue-50/50 flex justify-between items-center">
-                <h3 className="font-bold text-campusblue-900 text-lg">
-                  {viewMode === "DAY" ? `Schedule for ${selectedDate}` : "Weekly Schedule View"}
-                </h3>
+              <div className="px-6 py-4 border-b border-campusblue-100 bg-campusblue-50/50 flex justify-between items-center">
+                <div>
+                  <h3 className="font-bold text-campusblue-900 text-base">
+                    {viewMode === "DAY" ? `Schedule for ${selectedDate}` : "Weekly Schedule Overview"}
+                  </h3>
+                  <p className="text-xs text-campusblue-500 mt-0.5">
+                    {displayedEvents.length} scheduled institutional events & rounds
+                  </p>
+                </div>
                 <div className="flex gap-2">
-                  <button 
-                    onClick={() => setViewMode("DAY")} 
-                    className={`px-3 py-1 rounded text-xs font-semibold shadow-sm transition ${viewMode === "DAY" ? "bg-white border border-campusblue-100 text-campusblue-900" : "bg-campusblue-50 text-campusblue-500 hover:bg-campusblue-100"}`}
+                  <button
+                    onClick={() => setViewMode("DAY")}
+                    className={`px-3 py-1 rounded-lg text-xs font-bold transition ${
+                      viewMode === "DAY"
+                        ? "bg-campusblue-600 text-white shadow-sm"
+                        : "bg-white border border-campusblue-200 text-campusblue-700 hover:bg-campusblue-50"
+                    }`}
                   >
                     Day View
                   </button>
-                  <button 
-                    onClick={() => setViewMode("WEEK")} 
-                    className={`px-3 py-1 rounded text-xs font-semibold shadow-sm transition ${viewMode === "WEEK" ? "bg-white border border-campusblue-100 text-campusblue-900" : "bg-campusblue-50 text-campusblue-500 hover:bg-campusblue-100"}`}
+                  <button
+                    onClick={() => setViewMode("WEEK")}
+                    className={`px-3 py-1 rounded-lg text-xs font-bold transition ${
+                      viewMode === "WEEK"
+                        ? "bg-campusblue-600 text-white shadow-sm"
+                        : "bg-white border border-campusblue-200 text-campusblue-700 hover:bg-campusblue-50"
+                    }`}
                   >
                     Week View
                   </button>
                 </div>
               </div>
-              
-              <div className="p-6 space-y-6">
-                {displayedEvents.length === 0 ? (
-                  <div className="text-center py-10 text-campusblue-500">
-                    No events scheduled for {viewMode === "DAY" ? "this date" : "this week"}.
+
+              <div className="p-6 space-y-4">
+                {loading ? (
+                  <div className="py-16 text-center text-campusblue-500">
+                    <div className="w-8 h-8 border-4 border-campusblue-200 border-t-campusblue-600 rounded-full animate-spin mx-auto mb-2"></div>
+                    <p className="text-xs font-semibold">Loading placement scheduler feed...</p>
+                  </div>
+                ) : displayedEvents.length === 0 ? (
+                  <div className="py-16 text-center text-campusblue-500">
+                    <p className="font-semibold text-sm">No events or rounds scheduled for {viewMode === "DAY" ? selectedDate : "this week"}.</p>
+                    <button
+                      onClick={() => openAddModal(selectedDate)}
+                      className="mt-3 text-xs font-bold text-campusblue-700 hover:underline"
+                    >
+                      + Schedule a round on this date
+                    </button>
                   </div>
                 ) : (
-                  <>
-                    {displayedEvents.map((event, idx) => {
-                      const showDateHeader = viewMode === "WEEK" && (idx === 0 || displayedEvents[idx - 1].date !== event.date);
-                      const isIgnored = ignoredConflicts.includes(event.id);
-                      const isConflict = event.conflict && !isIgnored;
+                  displayedEvents.map((event) => {
+                    const isBlackout = event.is_blackout;
+                    const isConflict = event.conflict;
 
-                      return (
-                        <React.Fragment key={event.id}>
-                          {showDateHeader && (
-                            <h4 className="font-bold text-campusblue-900 border-b border-campusblue-50 pb-2 mt-4 first:mt-0">
-                              {event.date}
-                            </h4>
-                          )}
-                          <div className={`border rounded-xl p-5 relative overflow-hidden transition-all ${isConflict ? 'border-red-200 bg-red-50/30' : 'border-campusblue-100 bg-white hover:border-campusblue-200 hover:shadow-sm'}`}>
-                            {isConflict && (
-                              <div className="absolute top-0 right-0 bg-red-500 text-white text-[10px] font-bold px-3 py-1 rounded-bl-lg uppercase tracking-wider">
-                                Conflict Detected
-                              </div>
-                            )}
-                            <div className="flex flex-col sm:flex-row justify-between gap-4">
-                              <div>
-                                <div className="flex items-center gap-2 mb-1">
-                                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider ${
-                                    event.type === 'TEST' ? 'bg-campusblue-50 text-campusblue-800' : 
-                                    event.type === 'INTERVIEW' ? 'bg-campusblue-50 text-campusblue-800' : 
-                                    'bg-campusblue-50 text-campusblue-800'
-                                  }`}>
-                                    {event.type}
-                                  </span>
-                                  <span className="text-sm font-semibold text-campusblue-500">{event.time}</span>
-                                  {viewMode === "WEEK" && !showDateHeader && (
-                                    <span className="text-xs text-campusblue-300 ml-2">&bull; {event.date}</span>
-                                  )}
-                                </div>
-                                <h4 className="text-lg font-bold text-campusblue-900">{event.name}</h4>
-                                <div className="flex items-center gap-1 text-sm text-campusblue-500 mt-2">
-                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
-                                  {event.location}
-                                </div>
-                              </div>
-                              
-                              <div className="flex sm:flex-col justify-end gap-2 shrink-0">
-                                {isConflict ? (
-                                  <>
-                                    <button onClick={() => setModalState({ type: 'RESOLVE', event })} className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-semibold shadow-sm transition w-full">Resolve Overlap</button>
-                                    <button onClick={() => handleIgnore(event.id)} className="bg-white border border-campusblue-100 hover:bg-campusblue-50 text-campusblue-800 px-4 py-2 rounded-lg text-sm font-semibold transition w-full">Ignore</button>
-                                  </>
-                                ) : (
-                                  <>
-                                    <button onClick={() => setModalState({ type: 'EDIT', event })} className="bg-campusblue-50 hover:bg-campusblue-50 text-campusblue-800 border border-campusblue-100 px-4 py-2 rounded-lg text-sm font-semibold transition w-full">Edit Time</button>
-                                    <button onClick={() => setModalState({ type: 'DETAILS', event })} className="bg-white border border-campusblue-100 hover:bg-campusblue-50 text-campusblue-800 px-4 py-2 rounded-lg text-sm font-semibold transition w-full">View Details</button>
-                                  </>
-                                )}
-                              </div>
+                    return (
+                      <div
+                        key={event.id}
+                        className={`border rounded-xl p-5 transition ${
+                          isBlackout
+                            ? "border-red-200 bg-red-50/40"
+                            : isConflict
+                            ? "border-amber-200 bg-amber-50/40"
+                            : "border-campusblue-100 bg-white hover:border-campusblue-200"
+                        }`}
+                      >
+                        <div className="flex flex-col sm:flex-row justify-between gap-4">
+                          <div>
+                            <div className="flex items-center gap-2 mb-1.5">
+                              {isBlackout ? (
+                                <span className="text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider bg-red-100 text-red-800 border border-red-200">
+                                  HARD ACADEMIC BLACKOUT
+                                </span>
+                              ) : (
+                                <span className="text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider bg-campusblue-100 text-campusblue-800">
+                                  {event.type}
+                                </span>
+                              )}
+                              <span className="text-xs font-semibold text-campusblue-600">{event.time}</span>
+                              <span className="text-xs text-slate-400">&bull; {event.date}</span>
                             </div>
-                            
-                            {isConflict && (
-                              <div className="mt-4 p-3 bg-red-100/50 rounded-lg border border-red-200 flex gap-3 text-sm text-red-800">
-                                <svg className="w-5 h-5 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
-                                <div>
-                                  <strong>Schedule Collision:</strong> This event overlaps with the <em>Global Systems Pre-Placement Talk</em>. 14 shortlisted students are registered for both events simultaneously.
-                                </div>
-                              </div>
-                            )}
 
-                            {isIgnored && event.conflict && (
-                              <div className="mt-4 p-3 bg-campusblue-50 rounded-lg border border-campusblue-50 flex gap-3 text-sm text-campusblue-900">
-                                <svg className="w-5 h-5 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                                <div>
-                                  <strong>Overlap Ignored:</strong> You have chosen to bypass the schedule collision warning for this event.
-                                </div>
-                              </div>
-                            )}
+                            <h4 className="text-base font-bold text-campusblue-900">{event.name}</h4>
+
+                            <div className="flex items-center gap-1.5 text-xs text-slate-600 mt-1.5">
+                              <svg className="w-4 h-4 text-campusblue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                              </svg>
+                              <span>{event.location}</span>
+                            </div>
+
+                            <p className="text-xs text-slate-600 mt-2 font-medium">{event.description}</p>
                           </div>
-                        </React.Fragment>
-                      );
-                    })}
-                  </>
+
+                          <div className="flex sm:flex-col justify-end gap-2 shrink-0">
+                            {isConflict && (
+                              <button
+                                onClick={() => setModalState({ type: "RESOLVE", event })}
+                                className="bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold shadow-sm transition"
+                              >
+                                Resolve Collision
+                              </button>
+                            )}
+                            <button
+                              onClick={() => setModalState({ type: "DETAILS", event })}
+                              className="bg-white border border-campusblue-200 hover:bg-campusblue-50 text-campusblue-800 px-3 py-1.5 rounded-lg text-xs font-semibold transition"
+                            >
+                              Inspect
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Real-time Conflict Alert Snippet */}
+                        {isConflict && event.conflict_details && event.conflict_details.length > 0 && (
+                          <div className="mt-3 p-3 bg-red-100/60 rounded-lg border border-red-200 text-xs text-red-900 flex gap-2">
+                            <svg className="w-4 h-4 text-red-600 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                            </svg>
+                            <div>
+                              <strong>Engine Conflict Alert:</strong> {event.conflict_details[0]?.message}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })
                 )}
               </div>
             </div>
           </div>
-          
         </div>
       </div>
 
-      {/* Modals */}
-      {modalState && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl max-w-md w-full shadow-2xl overflow-hidden border border-campusblue-100">
-            
-            <div className="p-6 border-b border-campusblue-50 flex justify-between items-center bg-campusblue-50/50">
-              <h2 className="text-xl font-bold text-campusblue-900 leading-tight">
-                {modalState.type === 'DETAILS' && "Event Details"}
-                {modalState.type === 'EDIT' && "Adjust Event Time"}
-                {modalState.type === 'RESOLVE' && "Resolve Collision"}
-                {modalState.type === 'ADD' && "Add New Event"}
+      {/* Schedule / Add Modal with Real-Time Conflict Engine */}
+      {modalState?.type === "ADD" && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+          <div className="bg-white rounded-xl w-full max-w-xl shadow-2xl overflow-hidden border border-campusblue-100">
+            <div className="p-4 border-b border-campusblue-100 flex justify-between items-center bg-campusblue-50">
+              <h2 className="font-bold text-campusblue-900 flex items-center gap-2">
+                <svg className="w-5 h-5 text-campusblue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+                Conflict-Aware Drive & Event Scheduler
               </h2>
-              <button onClick={() => setModalState(null)} className="w-8 h-8 flex items-center justify-center bg-campusblue-50 hover:bg-campusblue-100 rounded-full text-campusblue-500 hover:text-campusblue-800 transition">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" /></svg>
+              <button
+                onClick={() => setModalState(null)}
+                className="w-8 h-8 flex items-center justify-center bg-campusblue-100 hover:bg-campusblue-200 rounded-full text-campusblue-700 transition"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
+                </svg>
               </button>
             </div>
 
-            <div className="p-6 space-y-4">
-              
-              {modalState.event && <h3 className="font-bold text-campusblue-900">{modalState.event.name}</h3>}
-              
-              {modalState.type === 'DETAILS' && modalState.event && (
-                <div className="space-y-3">
-                  <div className="text-sm text-campusblue-700 leading-relaxed bg-campusblue-50 p-4 rounded-lg border border-campusblue-50">
-                    {modalState.event.description}
-                  </div>
-                  <div className="grid grid-cols-2 gap-4 pt-2">
-                    <div>
-                      <span className="block text-xs font-bold text-campusblue-300 uppercase">Date</span>
-                      <span className="text-sm font-semibold">{modalState.event.date}</span>
-                    </div>
-                    <div>
-                      <span className="block text-xs font-bold text-campusblue-300 uppercase">Time</span>
-                      <span className="text-sm font-semibold">{modalState.event.time}</span>
-                    </div>
-                    <div className="col-span-2">
-                      <span className="block text-xs font-bold text-campusblue-300 uppercase">Location</span>
-                      <span className="text-sm font-semibold">{modalState.event.location}</span>
-                    </div>
-                  </div>
-                </div>
-              )}
+            <form onSubmit={handleAddSubmit} className="p-6 space-y-4 max-h-[80vh] overflow-y-auto">
+              {/* Category Selector */}
+              <div className="flex gap-2 p-1 bg-campusblue-50 rounded-lg border border-campusblue-100 text-xs font-bold">
+                <button
+                  type="button"
+                  onClick={() => setScheduleCategory("DRIVE_ROUND")}
+                  className={`flex-1 py-1.5 rounded-md transition ${
+                    scheduleCategory === "DRIVE_ROUND"
+                      ? "bg-white text-campusblue-900 shadow-sm"
+                      : "text-campusblue-600 hover:text-campusblue-900"
+                  }`}
+                >
+                  Corporate Drive Round
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setScheduleCategory("INSTITUTIONAL_BLACKOUT")}
+                  className={`flex-1 py-1.5 rounded-md transition ${
+                    scheduleCategory === "INSTITUTIONAL_BLACKOUT"
+                      ? "bg-white text-campusblue-900 shadow-sm"
+                      : "text-campusblue-600 hover:text-campusblue-900"
+                  }`}
+                >
+                  Institutional Blackout Event
+                </button>
+              </div>
 
-              {modalState.type === 'EDIT' && modalState.event && (
-                <div className="space-y-4">
+              {scheduleCategory === "DRIVE_ROUND" ? (
+                <>
                   <div>
-                    <label className="block text-sm font-bold text-campusblue-800 mb-1">Time Slot</label>
-                    <select 
-                      className="w-full border-campusblue-200 rounded-lg shadow-sm focus:ring-blue-500 focus:border-campusblue-500 text-sm"
-                      defaultValue={modalState.event.time}
-                      id="timeSelect"
+                    <label className="block text-xs font-bold text-campusblue-800 uppercase tracking-wider mb-1">
+                      Placement Drive
+                    </label>
+                    <select
+                      value={selectedDriveId}
+                      onChange={(e) => {
+                        setSelectedDriveId(e.target.value);
+                        checkConflicts(formDate, startTime, endTime, selectedVenue, Number(e.target.value));
+                      }}
+                      className="w-full border border-campusblue-200 rounded-lg p-2 text-xs font-semibold text-campusblue-900 focus:ring-2 focus:ring-campusblue-500"
                     >
-                      <option value="09:00 AM - 11:00 AM">09:00 AM - 11:00 AM</option>
-                      <option value="10:00 AM - 01:00 PM">10:00 AM - 01:00 PM</option>
-                      <option value="01:00 PM - 04:00 PM">01:00 PM - 04:00 PM</option>
-                      <option value="02:00 PM - 05:00 PM">02:00 PM - 05:00 PM</option>
+                      {drives.map((d) => (
+                        <option key={d.id} value={d.id}>
+                          {d.name} ({d.company_name})
+                        </option>
+                      ))}
                     </select>
                   </div>
-                  <button 
-                    onClick={() => {
-                      const sel = document.getElementById('timeSelect') as HTMLSelectElement;
-                      handleSaveTime(modalState.event.id, sel.value);
-                    }}
-                    className="w-full bg-campusblue-700 hover:bg-campusblue-800 text-white py-2 rounded-lg font-bold transition"
-                  >
-                    Save Changes
-                  </button>
-                </div>
-              )}
 
-              {modalState.type === 'RESOLVE' && modalState.event && (
-                <div className="space-y-3">
-                  <p className="text-sm text-campusblue-700 mb-4">
-                    Please select an action to resolve the scheduling collision for this event.
-                  </p>
-                  <button 
-                    onClick={() => handleResolve(modalState.event.id, "RESCHEDULE_NEXTGEN")} 
-                    className="w-full text-left p-4 border border-campusblue-100 rounded-lg hover:bg-campusblue-50 hover:border-campusblue-200 transition"
-                  >
-                    <div className="font-bold text-campusblue-900 text-sm">Reschedule to Afternoon Slot</div>
-                    <div className="text-xs text-campusblue-500 mt-1">Moves this event to 02:00 PM - 05:00 PM to clear the overlap.</div>
-                  </button>
-                  <button 
-                    onClick={() => { alert("Message sent to recruiter!"); setModalState(null); }} 
-                    className="w-full text-left p-4 border border-campusblue-100 rounded-lg hover:bg-campusblue-50 transition"
-                  >
-                    <div className="font-bold text-campusblue-900 text-sm">Request Recruiter to Shift Date</div>
-                    <div className="text-xs text-campusblue-500 mt-1">Send an automated email to the company requesting a new date.</div>
-                  </button>
-                </div>
-              )}
-
-              {modalState.type === 'ADD' && (
-                <form onSubmit={handleAddEvent} className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-bold text-campusblue-800 mb-1">Event Name</label>
-                    <input name="name" required className="w-full border-campusblue-200 rounded-lg shadow-sm focus:ring-blue-500 focus:border-campusblue-500 text-sm" placeholder="e.g. Mock Interview Drive" />
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-sm font-bold text-campusblue-800 mb-1">Event Type</label>
-                      <select name="type" className="w-full border-campusblue-200 rounded-lg shadow-sm focus:ring-blue-500 focus:border-campusblue-500 text-sm">
+                      <label className="block text-xs font-bold text-campusblue-800 uppercase tracking-wider mb-1">
+                        Round Name
+                      </label>
+                      <input
+                        required
+                        placeholder="e.g. Technical Interview Round 1"
+                        value={roundName}
+                        onChange={(e) => setRoundName(e.target.value)}
+                        className="w-full border border-campusblue-200 rounded-lg p-2 text-xs font-semibold text-campusblue-900"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-campusblue-800 uppercase tracking-wider mb-1">
+                        Round Type
+                      </label>
+                      <select
+                        value={roundType}
+                        onChange={(e) => setRoundType(e.target.value)}
+                        className="w-full border border-campusblue-200 rounded-lg p-2 text-xs font-semibold text-campusblue-900"
+                      >
                         <option value="INTERVIEW">Interview</option>
-                        <option value="TEST">Test</option>
-                        <option value="PPT">PPT</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-bold text-campusblue-800 mb-1">Time Slot</label>
-                      <select name="time" className="w-full border-campusblue-200 rounded-lg shadow-sm focus:ring-blue-500 focus:border-campusblue-500 text-sm">
-                        <option value="09:00 AM - 11:00 AM">09:00 AM - 11:00 AM</option>
-                        <option value="01:00 PM - 04:00 PM">01:00 PM - 04:00 PM</option>
+                        <option value="ASSESSMENT">Assessment / Test</option>
+                        <option value="GD">Group Discussion</option>
+                        <option value="CODING">Coding Challenge</option>
+                        <option value="HR">HR Interview</option>
                       </select>
                     </div>
                   </div>
+                </>
+              ) : (
+                <>
                   <div>
-                    <label className="block text-sm font-bold text-campusblue-800 mb-1">Location</label>
-                    <input name="location" required defaultValue="Computer Labs" className="w-full border-campusblue-200 rounded-lg shadow-sm focus:ring-blue-500 focus:border-campusblue-500 text-sm" />
+                    <label className="block text-xs font-bold text-campusblue-800 uppercase tracking-wider mb-1">
+                      Event Title
+                    </label>
+                    <input
+                      required
+                      placeholder="e.g. Mid-Semester Written Examinations"
+                      value={roundName}
+                      onChange={(e) => setRoundName(e.target.value)}
+                      className="w-full border border-campusblue-200 rounded-lg p-2 text-xs font-semibold text-campusblue-900"
+                    />
                   </div>
                   <div>
-                    <label className="block text-sm font-bold text-campusblue-800 mb-1">Description</label>
-                    <textarea name="description" rows={2} placeholder="Briefly describe this event..." className="w-full border-campusblue-200 rounded-lg shadow-sm focus:ring-blue-500 focus:border-campusblue-500 text-sm resize-none"></textarea>
-                  </div>
-                  
-                  <div className="bg-campusblue-50 p-3 rounded-lg border border-campusblue-50 flex gap-2">
-                    <svg className="w-5 h-5 text-campusblue-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-                    <div className="text-xs text-campusblue-800">
-                      <strong>Selected Date:</strong> {modalState.date}
+                    <label className="block text-xs font-bold text-campusblue-800 uppercase tracking-wider mb-1">
+                      Blackout Severity
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        id="hardBlackoutCheck"
+                        checked={isHardBlackout}
+                        onChange={(e) => setIsHardBlackout(e.target.checked)}
+                        className="rounded text-red-600 focus:ring-red-500"
+                      />
+                      <label htmlFor="hardBlackoutCheck" className="text-xs text-slate-700 font-semibold">
+                        Hard Academic Blackout (Strictly forbids all concurrent recruitment activities)
+                      </label>
                     </div>
                   </div>
-
-                  <button type="submit" className="w-full bg-campusblue-700 hover:bg-campusblue-800 text-white py-2.5 rounded-lg font-bold shadow-sm transition mt-2">
-                    Add Event to Schedule
-                  </button>
-                </form>
+                </>
               )}
 
+              {/* Date & Time Slot */}
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-campusblue-800 uppercase tracking-wider mb-1">
+                    Date
+                  </label>
+                  <input
+                    type="date"
+                    required
+                    value={formDate}
+                    onChange={(e) => {
+                      setFormDate(e.target.value);
+                      checkConflicts(e.target.value, startTime, endTime, selectedVenue, Number(selectedDriveId));
+                    }}
+                    className="w-full border border-campusblue-200 rounded-lg p-2 text-xs font-semibold text-campusblue-900"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-campusblue-800 uppercase tracking-wider mb-1">
+                    Start Time
+                  </label>
+                  <input
+                    type="time"
+                    required
+                    value={startTime}
+                    onChange={(e) => {
+                      setStartTime(e.target.value);
+                      checkConflicts(formDate, e.target.value, endTime, selectedVenue, Number(selectedDriveId));
+                    }}
+                    className="w-full border border-campusblue-200 rounded-lg p-2 text-xs font-semibold text-campusblue-900"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-campusblue-800 uppercase tracking-wider mb-1">
+                    End Time
+                  </label>
+                  <input
+                    type="time"
+                    required
+                    value={endTime}
+                    onChange={(e) => {
+                      setEndTime(e.target.value);
+                      checkConflicts(formDate, startTime, e.target.value, selectedVenue, Number(selectedDriveId));
+                    }}
+                    className="w-full border border-campusblue-200 rounded-lg p-2 text-xs font-semibold text-campusblue-900"
+                  />
+                </div>
+              </div>
+
+              {/* Venue Selector */}
+              <div>
+                <label className="block text-xs font-bold text-campusblue-800 uppercase tracking-wider mb-1">
+                  Campus Venue / Delivery Mode
+                </label>
+                <select
+                  value={selectedVenue}
+                  onChange={(e) => {
+                    setSelectedVenue(e.target.value);
+                    checkConflicts(formDate, startTime, endTime, e.target.value, Number(selectedDriveId));
+                  }}
+                  className="w-full border border-campusblue-200 rounded-lg p-2 text-xs font-semibold text-campusblue-900"
+                >
+                  {venues.map((v) => (
+                    <option key={v.id} value={v.name}>
+                      {v.name} ({v.building || (v.is_virtual ? "Cloud" : "Campus")}, Cap: {v.capacity})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* REAL-TIME CONFLICT ENGINE BANNER */}
+              {conflictChecking ? (
+                <div className="p-3 bg-campusblue-50 rounded-lg border border-campusblue-100 flex items-center gap-2 text-xs text-campusblue-700">
+                  <div className="w-4 h-4 border-2 border-campusblue-600 border-t-transparent rounded-full animate-spin"></div>
+                  <span>Evaluating institutional examination blackouts and venue overlaps...</span>
+                </div>
+              ) : conflictReport?.has_conflict ? (
+                <div className="p-4 bg-red-50 rounded-lg border border-red-200 space-y-3">
+                  <div className="flex items-start gap-2 text-xs text-red-900">
+                    <svg className="w-5 h-5 text-red-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                    <div>
+                      <div className="font-bold text-red-800 uppercase text-[10px] tracking-wider">
+                        {conflictReport.has_hard_blackout ? "CRITICAL HARD BLACKOUT DETECTED" : "CONFLICT DETECTED"}
+                      </div>
+                      <div className="mt-0.5">{conflictReport.conflicts[0]?.message}</div>
+                    </div>
+                  </div>
+
+                  {/* Recommended Alternative Slots */}
+                  {conflictReport.alternative_slots && conflictReport.alternative_slots.length > 0 && (
+                    <div className="pt-2 border-t border-red-200 space-y-2">
+                      <div className="text-[10px] font-bold text-red-700 uppercase tracking-wider">
+                        Recommended Conflict-Free Alternatives:
+                      </div>
+                      {conflictReport.alternative_slots.map((slot: any, idx: number) => {
+                        const d = new Date(slot.start_time);
+                        return (
+                          <div
+                            key={idx}
+                            className="bg-white p-2.5 rounded-lg border border-red-200 flex justify-between items-center text-xs"
+                          >
+                            <div>
+                              <div className="font-bold text-slate-800">
+                                {MONTH_NAMES[d.getMonth()]} {d.getDate()} &bull; {d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                              </div>
+                              <div className="text-[11px] text-slate-500">{slot.recommendation_reason}</div>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => handleAdoptAlternative(slot)}
+                              className="px-2.5 py-1 text-xs font-bold text-white bg-campusblue-600 hover:bg-campusblue-700 rounded transition shrink-0 ml-2"
+                            >
+                              Adopt Slot
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              ) : conflictReport && !conflictReport.has_conflict ? (
+                <div className="p-3 bg-emerald-50 rounded-lg border border-emerald-200 flex items-center gap-2 text-xs text-emerald-800 font-semibold">
+                  <svg className="w-5 h-5 text-emerald-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                  <span>Verified conflict-free! Venue and candidate calendar slots are completely clear.</span>
+                </div>
+              ) : null}
+
+              <div>
+                <label className="block text-xs font-bold text-campusblue-800 uppercase tracking-wider mb-1">
+                  Instructions / Notes
+                </label>
+                <textarea
+                  rows={2}
+                  value={instructions}
+                  onChange={(e) => setInstructions(e.target.value)}
+                  placeholder="Notes for candidates, reporting time, platform links..."
+                  className="w-full border border-campusblue-200 rounded-lg p-2 text-xs resize-none text-slate-800"
+                ></textarea>
+              </div>
+
+              <div className="pt-3 border-t border-campusblue-100 flex justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setModalState(null)}
+                  className="px-4 py-2 text-xs font-bold text-campusblue-700 hover:bg-campusblue-50 rounded-lg transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={submitting || (conflictReport?.has_hard_blackout && scheduleCategory === "DRIVE_ROUND")}
+                  className="px-4 py-2 text-xs font-bold text-white bg-campusblue-600 hover:bg-campusblue-700 rounded-lg shadow-sm transition disabled:opacity-50"
+                >
+                  {submitting ? "Saving..." : "Confirm & Schedule Round"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Details Modal */}
+      {modalState?.type === "DETAILS" && modalState.event && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+          <div className="bg-white rounded-xl w-full max-w-md shadow-2xl overflow-hidden border border-campusblue-100">
+            <div className="p-4 border-b border-campusblue-100 flex justify-between items-center bg-campusblue-50">
+              <h2 className="font-bold text-campusblue-900 text-sm">Event Inspection</h2>
+              <button
+                onClick={() => setModalState(null)}
+                className="w-8 h-8 flex items-center justify-center bg-campusblue-100 hover:bg-campusblue-200 rounded-full text-campusblue-700 transition"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="p-6 space-y-3">
+              <h3 className="font-bold text-base text-campusblue-900">{modalState.event.name}</h3>
+              <div className="text-xs text-slate-600 font-mono bg-campusblue-50 p-3 rounded-lg border border-campusblue-100">
+                {modalState.event.description}
+              </div>
+              <div className="grid grid-cols-2 gap-3 text-xs pt-2">
+                <div>
+                  <span className="text-campusblue-400 block font-bold uppercase text-[10px]">Date</span>
+                  <span className="font-semibold">{modalState.event.date}</span>
+                </div>
+                <div>
+                  <span className="text-campusblue-400 block font-bold uppercase text-[10px]">Time Window</span>
+                  <span className="font-semibold">{modalState.event.time}</span>
+                </div>
+                <div className="col-span-2">
+                  <span className="text-campusblue-400 block font-bold uppercase text-[10px]">Venue / Delivery Mode</span>
+                  <span className="font-semibold">{modalState.event.location}</span>
+                </div>
+              </div>
+              <div className="pt-3 border-t border-campusblue-100 flex justify-end">
+                <button
+                  onClick={() => setModalState(null)}
+                  className="px-4 py-1.5 text-xs font-bold text-campusblue-700 hover:bg-campusblue-50 rounded-lg border border-campusblue-200"
+                >
+                  Close
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -497,8 +913,3 @@ export default function SchedulerPage() {
     </AppLayout>
   );
 }
-
-
-
-
-

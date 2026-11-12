@@ -43,6 +43,7 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children, allowedRoles = [
     { href: "/dashboard/tpo/command-center", label: "Placement Command Center", roles: ["PLACEMENT_OFFICER"] },
     { href: "/dashboard/tpo/drive-manager", label: "Drive Lifecycle Manager", roles: ["PLACEMENT_OFFICER"] },
     { href: "/dashboard/tpo/shortlisting", label: "AI Shortlisting Console", roles: ["PLACEMENT_OFFICER"] },
+    { href: "/dashboard/tpo/rounds", label: "Drive Rounds & Technical Quiz", roles: ["PLACEMENT_OFFICER"] },
     { href: "/dashboard/tpo/scheduler", label: "Conflict-Free Scheduler", roles: ["PLACEMENT_OFFICER"] },
     { href: "/dashboard/tpo/offer-desk", label: "Offer Verification Desk", roles: ["PLACEMENT_OFFICER"] },
     { href: "/dashboard/tpo/analytics", label: "Institutional Analytics", roles: ["PLACEMENT_OFFICER", "SUPER_ADMIN"] },

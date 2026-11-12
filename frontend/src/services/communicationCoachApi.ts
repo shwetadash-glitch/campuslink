@@ -21,6 +21,8 @@ export interface CommunicationScenarioItem {
   recommended_min_words: number;
   recommended_max_words: number;
   key_focus_areas: string[];
+  is_dynamic?: boolean;
+  created_at?: string;
 }
 
 export interface RubricScores {
@@ -31,6 +33,42 @@ export interface RubricScores {
   professional_language: number;
   conciseness: number;
   audience_adaptation: number;
+}
+
+export interface DeliveryScores {
+  pacing_fluency: number;
+  filler_word_control: number;
+  structural_signposting: number;
+  vocal_confidence_clarity: number;
+  audience_adaptation: number;
+}
+
+export interface FillerWordDetected {
+  word: string;
+  count: number;
+  timestamp_instances: string[];
+}
+
+export interface AcousticAnalytics {
+  words_per_minute: number;
+  pacing_assessment: "OPTIMAL" | "SLIGHTLY_SLOW" | "SLIGHTLY_FAST" | "TOO_SLOW" | "TOO_FAST";
+  total_speaking_duration_seconds: number;
+  silence_duration_seconds: number;
+  filler_words_detected: FillerWordDetected[];
+  filler_density_percentage: number;
+  total_word_count?: number;
+}
+
+export interface StructuralFrameworkCritique {
+  framework_used: "PREP" | "STAR";
+  point_clarity?: string;
+  reason_validity?: string;
+  example_effectiveness?: string;
+  point_recap?: string;
+  situation_clarity?: string;
+  task_definition?: string;
+  action_execution?: string;
+  result_impact?: string;
 }
 
 export interface FactualEvaluation {
@@ -53,11 +91,18 @@ export interface RecommendedExercise {
   objective: string;
 }
 
+export type GradeTier = "E" | "A" | "P" | "B" | "C" | "D";
+
 export interface CommunicationFeedbackData {
   id: number;
   session_id: number;
   overall_score: number;
+  grade_tier?: GradeTier | null;
+  grade_label?: string | null;
   rubric_scores: RubricScores;
+  delivery_scores?: DeliveryScores | null;
+  acoustic_analytics?: AcousticAnalytics | null;
+  structural_framework_critique?: StructuralFrameworkCritique | null;
   factual_technical_evaluation: FactualEvaluation;
   strengths: string[];
   areas_to_improve: string[];
@@ -70,13 +115,27 @@ export interface CommunicationFeedbackData {
   created_at: string;
 }
 
+export interface AcousticTelemetry {
+  words_per_minute?: number;
+  pacing_assessment?: string;
+  total_speaking_duration_seconds?: number;
+  silence_duration_seconds?: number;
+  filler_density_percentage?: number;
+  duration_seconds?: number;
+}
+
 export interface CommunicationPracticeSessionData {
   id: number;
   student_id: number;
   scenario_id: number;
   category: string;
   status: "IN_PROGRESS" | "EVALUATION_IN_PROGRESS" | "EVALUATED" | "EVALUATION_FAILED" | "ABANDONED";
+  submission_mode?: "TEXT" | "AUDIO";
   student_response: string | null;
+  audio_storage_path?: string | null;
+  audio_duration_seconds?: number | null;
+  audio_mime_type?: string | null;
+  acoustic_telemetry?: AcousticTelemetry | null;
   word_count: number | null;
   attempt_number: number;
   revision_number: number;
@@ -132,6 +191,13 @@ export const communicationCoachApi = {
       `/api/v1/students/me/communication-coach/scenarios/${id}`
     ),
 
+  generateDynamicEmail: (params?: { difficulty?: string; domain?: string }) =>
+    apiClient.post<{
+      message: string;
+      scenario: CommunicationScenarioItem;
+      session: CommunicationPracticeSessionData;
+    }>("/api/v1/students/me/communication-coach/scenarios/generate-email", params || {}),
+
   startSession: (scenarioId: number, forceNew: boolean = false) =>
     apiClient.post<{ session: CommunicationPracticeSessionData; is_resumed: boolean }>(
       "/api/v1/students/me/communication-coach/sessions/start",
@@ -156,6 +222,16 @@ export const communicationCoachApi = {
     }>(`/api/v1/students/me/communication-coach/sessions/${sessionId}/submit`, {
       response_text: responseText,
     }),
+
+  submitAudioResponse: (sessionId: number, formData: FormData) =>
+    apiClient.post<{
+      message: string;
+      session: CommunicationPracticeSessionData;
+      feedback: CommunicationFeedbackData;
+    }>(`/api/v1/students/me/communication-coach/sessions/${sessionId}/submit-audio`, formData),
+
+  getAudioStreamUrl: (sessionId: number) =>
+    `/api/v1/students/me/communication-coach/sessions/${sessionId}/audio`,
 
   retryEvaluation: (sessionId: number) =>
     apiClient.post<{

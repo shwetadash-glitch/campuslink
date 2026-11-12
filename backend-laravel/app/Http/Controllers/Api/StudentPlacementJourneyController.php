@@ -14,6 +14,7 @@ use App\Enums\CandidateDriveStatus;
 use App\Enums\OfferStatus;
 use App\Services\EligibilityService;
 use App\Services\NotificationService;
+use App\Services\DriveRoundsService;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 
@@ -21,13 +22,16 @@ class StudentPlacementJourneyController extends Controller
 {
     protected EligibilityService $eligibilityService;
     protected NotificationService $notificationService;
+    protected DriveRoundsService $roundsService;
 
     public function __construct(
         EligibilityService $eligibilityService,
-        NotificationService $notificationService
+        NotificationService $notificationService,
+        DriveRoundsService $roundsService
     ) {
         $this->eligibilityService = $eligibilityService;
         $this->notificationService = $notificationService;
+        $this->roundsService = $roundsService;
     }
 
     private function getStudent(Request $request): Student
@@ -65,10 +69,25 @@ class StudentPlacementJourneyController extends Controller
 
         // 4. Genuine Placement Aggregations
         $registeredDrivesCount = $candidates->count();
-        $activeInterviewsCount = $candidates->whereIn('status', [
-            CandidateDriveStatus::SHORTLISTED->value,
-            CandidateDriveStatus::INTERVIEWING->value,
-        ])->count();
+
+        // Active Interviews count: ONLY candidates where Round 3 (GD) has been CLEARED, or an active schedule exists
+        $activeInterviewsCount = $candidates->filter(function ($c) use ($upcomingSchedules) {
+            $hasSchedule = $upcomingSchedules->where('drive_id', $c->drive_id)->count() > 0;
+            $clearedGd = ($c->round_results['round_3']['decision'] ?? '') === 'SELECTED';
+            return $hasSchedule || ($c->status === CandidateDriveStatus::INTERVIEWING->value && $clearedGd);
+        })->count();
+
+        // Candidates who have qualified 1st AI Shortlisting
+        $shortlistedCount = $candidates->filter(function ($c) use ($student) {
+            if ($c->status === CandidateDriveStatus::REJECTED->value) return false;
+            if ($c->status === CandidateDriveStatus::SHORTLISTED->value) return true;
+            if ($c->drive?->job) {
+                $eligibility = $this->eligibilityService->checkHardEligibility($student, $c->drive->job);
+                return (bool) ($eligibility['is_eligible'] ?? false);
+            }
+            return false;
+        })->count();
+
         $pendingOffersCount = $offers->where('status', OfferStatus::PENDING)->count();
         $acceptedOffersCount = $offers->whereIn('status', [
             OfferStatus::ACCEPTED,
@@ -82,6 +101,8 @@ class StudentPlacementJourneyController extends Controller
             $overallStatus = 'OFFER_RECEIVED';
         } elseif ($activeInterviewsCount > 0) {
             $overallStatus = 'INTERVIEWING';
+        } elseif ($shortlistedCount > 0) {
+            $overallStatus = 'SHORTLISTED';
         } elseif ($registeredDrivesCount > 0) {
             $overallStatus = 'REGISTERED';
         }
@@ -110,17 +131,143 @@ class StudentPlacementJourneyController extends Controller
             ];
         }
 
-        // 6. Placement History
-        $placementHistory = $candidates->map(function ($c) {
+        // Add action item for dispatched technical quizzes
+        foreach ($candidates as $c) {
+            $r2 = $c->round_results['round_2'] ?? [];
+            if (!empty($r2['quiz_sent']) && ($r2['status'] ?? '') === 'DISPATCHED_PENDING') {
+                $actionItems[] = [
+                    'type' => 'TECHNICAL_QUIZ_DISPATCHED',
+                    'priority' => 'HIGH',
+                    'title' => "Technical Quiz Ready: {$c->drive?->company?->name}",
+                    'description' => "Placement Officer has officially dispatched the Technical Assessment Quiz for {$c->drive?->job?->title}. Complete your 45-minute technical evaluation.",
+                    'drive_id' => $c->drive_id,
+                    'drive_name' => $c->drive?->name,
+                ];
+            }
+        }
+
+        // 6. Placement History (Accurate 4-Stage Recruitment Lifecycle)
+        $placementHistory = $candidates->map(function ($c) use ($student, $upcomingSchedules) {
+            $drive = $c->drive;
+            $job = $drive?->job;
+
+            // 1. Round 1: 1st AI Shortlisting
+            $isR1Qualified = false;
+            $r1Eligible = true;
+            if ($job) {
+                $eligibility = $this->eligibilityService->checkHardEligibility($student, $job);
+                $r1Eligible = (bool) ($eligibility['is_eligible'] ?? true);
+                if ($r1Eligible) {
+                    $isR1Qualified = true;
+                }
+            } else {
+                $isR1Qualified = true;
+            }
+
+            // 2. Round 2: 2nd Shortlisting (Technical Assessment Quiz)
+            $r2 = $c->round_results['round_2'] ?? [];
+            $quizSent = (bool) ($r2['quiz_sent'] ?? false);
+            $studentSubmitted = (bool) ($r2['student_submitted'] ?? false);
+            $quizScore = isset($r2['score']) ? (float) $r2['score'] : null;
+            $r2Status = $r2['status'] ?? ($quizSent ? 'DISPATCHED_PENDING' : 'AWAITING_TPO_DISPATCH');
+            $isR2Cleared = $r2Status === 'CLEARED' || ($studentSubmitted && $quizScore !== null && $quizScore >= 60.0);
+            $canTakeQuiz = $quizSent && $r2Status === 'DISPATCHED_PENDING' && !$studentSubmitted;
+
+            // 3. Round 3: Group Discussion (GD)
+            // Shortlisted for GD ONLY AFTER they clear Round 2 Quiz!
+            $r3 = $c->round_results['round_3'] ?? [];
+            $isR3Shortlisted = $isR2Cleared;
+            $isR3Cleared = $isR3Shortlisted && (($r3['decision'] ?? '') === 'SELECTED');
+            $r3Status = $isR3Cleared ? 'SELECTED' : ($isR3Shortlisted ? 'SHORTLISTED_FOR_GD' : 'LOCKED');
+
+            // 4. Round 4: Final Interview
+            // Appears for Interview ONLY AFTER they clear Group Discussion or explicit scheduled slot exists
+            $hasSchedule = $upcomingSchedules->where('drive_id', $c->drive_id)->count() > 0;
+            $isInterviewEligible = $isR3Cleared || ($hasSchedule && $c->status === CandidateDriveStatus::INTERVIEWING->value) || ($c->status === CandidateDriveStatus::INTERVIEWING->value && empty($c->round_results));
+            $interviewStatus = $isInterviewEligible ? 'INTERVIEW_ELIGIBLE' : 'LOCKED';
+
+            // Real Current Stage Determination (Strict progression without fake jumping)
+            $currentStageNumber = 1;
+            $currentStageLabel = 'Round 1: 1st AI Shortlisting';
+            $displayStatus = 'SHORTLISTED';
+
+            if ($c->status === CandidateDriveStatus::REJECTED->value || !$r1Eligible) {
+                $displayStatus = 'REJECTED';
+                $currentStageLabel = 'Screening Disqualified';
+            } elseif ($c->status === CandidateDriveStatus::REGISTERED->value) {
+                $currentStageNumber = 1;
+                $currentStageLabel = 'Registration & AI Screening';
+                $displayStatus = 'REGISTERED';
+            } elseif ($isInterviewEligible) {
+                $currentStageNumber = 4;
+                $currentStageLabel = 'Round 4: Final Interview';
+                $displayStatus = 'INTERVIEWING';
+            } elseif ($isR3Shortlisted) {
+                $currentStageNumber = 3;
+                $currentStageLabel = 'Round 3: Group Discussion';
+                $displayStatus = 'SHORTLISTED_FOR_GD';
+            } elseif ($isR1Qualified) {
+                $currentStageNumber = 2;
+                $currentStageLabel = 'Round 2: Technical Assessment Quiz (2nd Shortlisting)';
+                $displayStatus = 'SHORTLISTED';
+            } else {
+                $currentStageNumber = 1;
+                $currentStageLabel = 'Registration & AI Screening';
+                $displayStatus = 'REGISTERED';
+            }
+
             return [
                 'candidate_id' => $c->id,
                 'drive_id' => $c->drive_id,
-                'drive_name' => $c->drive?->name,
-                'company_name' => $c->drive?->company?->name,
-                'job_title' => $c->drive?->job?->title,
-                'current_status' => $c->status,
-                'current_round_number' => $c->current_round_number,
+                'drive_name' => $drive?->name,
+                'company_name' => $drive?->company?->name,
+                'job_title' => $job?->title,
+                'current_status' => $displayStatus,
+                'current_round_number' => $currentStageNumber,
+                'current_stage_label' => $currentStageLabel,
                 'round_results' => $c->round_results,
+
+                // Stage 1
+                'round_1' => [
+                    'name' => '1st AI Shortlisting',
+                    'is_qualified' => $isR1Qualified,
+                    'is_eligible' => $r1Eligible,
+                    'status' => $isR1Qualified ? 'QUALIFIED' : 'DISQUALIFIED',
+                    'badge' => $isR1Qualified ? 'Qualified 1st AI Shortlisting' : 'Not Qualified',
+                ],
+
+                // Stage 2
+                'round_2' => [
+                    'name' => 'Technical Assessment Quiz (2nd Shortlisting)',
+                    'quiz_dispatched' => $quizSent,
+                    'quiz_status' => $r2Status,
+                    'can_take_quiz' => $canTakeQuiz,
+                    'quiz_score' => $quizScore,
+                    'student_submitted' => $studentSubmitted,
+                    'is_cleared' => $isR2Cleared,
+                ],
+
+                // Stage 3
+                'round_3' => [
+                    'name' => 'Group Discussion (GD)',
+                    'status' => $r3Status,
+                    'is_shortlisted' => $isR3Shortlisted,
+                    'is_cleared' => $isR3Cleared,
+                    'unlock_condition' => 'Shortlisted only after clearing Round 2 Technical Quiz',
+                ],
+
+                // Stage 4
+                'interview' => [
+                    'name' => 'Final Interview',
+                    'status' => $interviewStatus,
+                    'is_eligible' => $isInterviewEligible,
+                    'unlock_condition' => 'Appears for interview only after clearing Group Discussion',
+                ],
+
+                'quiz_dispatched' => $quizSent,
+                'quiz_status' => $r2Status,
+                'can_take_quiz' => $canTakeQuiz,
+                'quiz_score' => $quizScore,
                 'registered_at' => $c->registered_at?->toIso8601String(),
                 'status_history' => $c->statusHistories->map(fn($h) => [
                     'from' => $h->from_status,
@@ -146,6 +293,7 @@ class StudentPlacementJourneyController extends Controller
             'placement_summary' => [
                 'overall_status' => $overallStatus,
                 'registered_drives_count' => $registeredDrivesCount,
+                'shortlisted_drives_count' => $shortlistedCount,
                 'active_interviews_count' => $activeInterviewsCount,
                 'pending_offers_count' => $pendingOffersCount,
                 'accepted_offers_count' => $acceptedOffersCount,
@@ -518,5 +666,139 @@ class StudentPlacementJourneyController extends Controller
             'message' => "Joining confirmed.",
             'offer' => $offer->fresh(['job.company', 'placementDrive', 'driveCandidate']),
         ]);
+    }
+
+    /**
+     * Get technical quiz assigned by TPO for a drive.
+     */
+    public function getAssignedQuiz(Request $request, $driveId)
+    {
+        $student = $this->getStudent($request);
+
+        $drive = PlacementDrive::with(['job.company', 'job.requirements.skill', 'company'])->find($driveId);
+        if (!$drive) {
+            abort(404, 'Placement drive not found.');
+        }
+
+        $candidate = DriveCandidate::where('drive_id', $driveId)
+            ->where('student_id', $student->id)
+            ->first();
+
+        if (!$candidate) {
+            abort(403, 'You are not registered for this placement drive.');
+        }
+
+        $r2 = $candidate->round_results['round_2'] ?? [];
+        if (empty($r2['quiz_sent'])) {
+            return response()->json([
+                'message' => 'Technical Quiz has not yet been dispatched by the Placement Officer for your application.',
+                'quiz_status' => 'AWAITING_TPO_DISPATCH',
+            ], 403);
+        }
+
+        if (!empty($r2['student_submitted']) && in_array($r2['status'] ?? '', ['CLEARED', 'FAILED'])) {
+            return response()->json([
+                'message' => 'You have already submitted this technical assessment.',
+                'quiz_status' => $r2['status'],
+                'score' => $r2['score'] ?? null,
+                'submitted_at' => $r2['submitted_at'] ?? null,
+            ], 400);
+        }
+
+        $questions = $this->roundsService->getQuestionsForJob($drive->job, true);
+
+        return response()->json([
+            'drive_id' => $drive->id,
+            'drive_name' => $drive->name,
+            'company_name' => $drive->company?->name ?? $drive->job?->company?->name ?? 'Company',
+            'job_title' => $drive->job?->title,
+            'duration_minutes' => 45,
+            'passing_cutoff' => 60.0,
+            'total_questions' => count($questions),
+            'skills_evaluated' => array_values(array_unique(array_column($questions, 'skill'))),
+            'questions' => $questions,
+        ]);
+    }
+
+    /**
+     * Student submits answers for the assigned technical quiz.
+     */
+    public function submitQuiz(Request $request, $driveId)
+    {
+        $student = $this->getStudent($request);
+
+        $drive = PlacementDrive::with(['job.company', 'job.requirements.skill', 'company'])->findOrFail($driveId);
+
+        $validated = $request->validate([
+            'answers' => 'required|array',
+        ]);
+
+        try {
+            $result = $this->roundsService->evaluateStudentQuiz($drive, $student, $validated['answers']);
+            return response()->json($result);
+        } catch (\DomainException $e) {
+            return response()->json(['message' => $e->getMessage()], 400);
+        } catch (\Throwable $e) {
+            return response()->json(['message' => 'Failed to evaluate quiz: ' . $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Get Group Discussion (GD) session data, assigned group panel, and peers.
+     */
+    public function getGdSession(Request $request, $driveId)
+    {
+        $student = $this->getStudent($request);
+
+        $drive = PlacementDrive::with(['job.company', 'company'])->find($driveId);
+        if (!$drive) {
+            abort(404, 'Placement drive not found.');
+        }
+
+        try {
+            $session = $this->roundsService->getGdSessionData($drive, $student);
+            return response()->json([
+                'status' => 'success',
+                'session' => $session,
+            ]);
+        } catch (\DomainException $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => $e->getMessage(),
+            ], 403);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Failed to load group discussion session: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Submit Group Discussion evaluation & real-time telemetry to AI multi-candidate evaluator.
+     */
+    public function submitGdSession(Request $request, $driveId)
+    {
+        $student = $this->getStudent($request);
+
+        $drive = PlacementDrive::with(['job.company', 'company'])->findOrFail($driveId);
+
+        try {
+            $result = $this->roundsService->evaluateGdSession($drive, $student, $request->all());
+            return response()->json([
+                'status' => 'success',
+                'result' => $result,
+            ]);
+        } catch (\DomainException $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => $e->getMessage(),
+            ], 403);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Failed to submit group discussion evaluation: ' . $e->getMessage(),
+            ], 500);
+        }
     }
 }

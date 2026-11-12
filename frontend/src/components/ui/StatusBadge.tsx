@@ -32,6 +32,9 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({
       case "ELIGIBLE":
       case "ACTIVE":
       case "EXPERT":
+      case "SHORTLISTED":
+      case "QUALIFIED":
+      case "SHORTLISTED_ROUND_1":
         resolvedVariant = "success";
         break;
       case "IN_PROGRESS":

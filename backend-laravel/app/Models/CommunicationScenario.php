@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class CommunicationScenario extends Model
 {
@@ -14,7 +15,9 @@ class CommunicationScenario extends Model
 
     protected $casts = [
         'key_focus_areas' => 'array',
+        'prompt_generation_metadata' => 'array',
         'is_active' => 'boolean',
+        'is_dynamic' => 'boolean',
         'archived_at' => 'datetime',
         'min_word_limit' => 'integer',
         'max_word_limit' => 'integer',
@@ -25,6 +28,11 @@ class CommunicationScenario extends Model
     public function practiceSessions(): HasMany
     {
         return $this->hasMany(CommunicationPracticeSession::class, 'scenario_id');
+    }
+
+    public function generatedByStudent(): BelongsTo
+    {
+        return $this->belongsTo(Student::class, 'generated_by_student_id');
     }
 
     /**
@@ -53,6 +61,8 @@ class CommunicationScenario extends Model
             'recommended_min_words' => $this->recommended_min_words,
             'recommended_max_words' => $this->recommended_max_words,
             'key_focus_areas' => $this->key_focus_areas ?? [],
+            'is_dynamic' => (bool) $this->is_dynamic,
+            'created_at' => $this->created_at?->toIso8601String(),
             // Note: curated_factual_guidance is reserved for evaluator prompts, not disclosed upfront to students
         ];
     }

@@ -227,4 +227,133 @@ export const studentsApi = {
       message: string;
       offer: any;
     }>(`/api/v1/students/me/offers/${offerId}/confirm-joining`, { joining_date, notes }),
+
+  // Milestone: Interactive Technical Quiz Assessment (Connecting TPO & Student)
+  getTechnicalQuiz: (driveId: number) =>
+    apiClient.get<{
+      drive_id: number;
+      drive_name: string;
+      company_name: string;
+      job_title: string;
+      duration_minutes: number;
+      passing_cutoff: number;
+      total_questions: number;
+      skills_evaluated: string[];
+      questions: Array<{
+        id: string;
+        skill: string;
+        difficulty: string;
+        question: string;
+        options: Record<string, string>;
+      }>;
+    }>(`/api/v1/students/me/drives/${driveId}/technical-quiz`),
+
+  submitTechnicalQuiz: (driveId: number, answers: Record<string, string>) =>
+    apiClient.post<{
+      success: boolean;
+      status: "CLEARED" | "FAILED";
+      score: number;
+      correct_answers: number;
+      total_questions: number;
+      passing_cutoff: number;
+      skill_breakdown: Record<string, number>;
+      message: string;
+    }>(`/api/v1/students/me/drives/${driveId}/submit-quiz`, { answers }),
+
+  // Milestone: Interactive Group Discussion Video Room & Multi-Candidate AI Evaluation
+  getGdSession: (driveId: number) =>
+    apiClient.get<{
+      status: string;
+      session: {
+        drive_id: number;
+        drive_name: string;
+        company_name: string;
+        job_title: string;
+        group_panel: {
+          panel_id: string;
+          panel_name: string;
+          created_by: string;
+          duration_minutes: number;
+          topic: {
+            topic_id: string;
+            title: string;
+            description: string;
+            key_evaluation_points: string[];
+          };
+        };
+        rubrics: Array<{
+          key: string;
+          name: string;
+          max: number;
+          weight: string;
+          description: string;
+        }>;
+        candidate: {
+          id: number;
+          student_identifier: string;
+          name: string;
+          email: string;
+          branch: string;
+          role: string;
+        };
+        peers: Array<{
+          id: string;
+          student_identifier: string;
+          name: string;
+          branch: string;
+          role: string;
+          avatar_url: string;
+          color: string;
+          perspective: string;
+          sample_points: string[];
+        }>;
+        existing_evaluation?: any;
+      };
+    }>(`/api/v1/students/me/drives/${driveId}/gd-session`),
+
+  submitGdSession: (
+    driveId: number,
+    data: {
+      topic?: string;
+      clarity_and_fluency: number;
+      active_listening: number;
+      body_language: number;
+      topic_knowledge: number;
+      creativity_and_perspectivity: number;
+      speaking_duration_seconds?: number;
+      speech_transcript?: string;
+      remarks?: string;
+    }
+  ) =>
+    apiClient.post<{
+      status: string;
+      result: {
+        success: boolean;
+        status: "CLEARED" | "WAITLISTED";
+        overall_score: number;
+        passing_cutoff: number;
+        decision: "SELECTED" | "WAITLISTED";
+        rubrics: Record<
+          string,
+          {
+            score: number;
+            max: number;
+            label: string;
+          }
+        >;
+        remarks: string;
+        peer_evaluations: Array<{
+          student_identifier: string;
+          name: string;
+          branch: string;
+          scores: Record<string, number>;
+          overall_score: number;
+          decision: string;
+          feedback: string;
+        }>;
+        next_stage: string;
+        interview_unlocked: boolean;
+        message: string;
+      };
+    }>(`/api/v1/students/me/drives/${driveId}/submit-gd`, data),
 };

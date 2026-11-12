@@ -16,6 +16,8 @@ class CommunicationPracticeSession extends Model
     protected $casts = [
         'is_follow_up' => 'boolean',
         'security_telemetry' => 'array',
+        'acoustic_telemetry' => 'array',
+        'audio_duration_seconds' => 'float',
         'submitted_at' => 'datetime',
         'evaluated_at' => 'datetime',
         'evaluation_claimed_at' => 'datetime',

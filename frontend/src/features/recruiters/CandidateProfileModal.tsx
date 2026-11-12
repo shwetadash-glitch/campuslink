@@ -36,6 +36,33 @@ export const CandidateProfileModal: React.FC<CandidateProfileModalProps> = ({
     }
   }, [isOpen, studentId]);
 
+  const getFullResumeUrl = (url: string | null | undefined) => {
+    if (!url) return "#";
+    if (url.startsWith("http")) return url;
+    const base = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+    return `${base}${url.startsWith("/") ? "" : "/"}${url}`;
+  };
+
+  const handleViewResume = async (e: React.MouseEvent, url: string) => {
+    e.preventDefault();
+    try {
+      const fullUrl = getFullResumeUrl(url);
+      const token = typeof window !== "undefined" ? (localStorage.getItem("access_token") || localStorage.getItem("token")) : null;
+      const res = await fetch(fullUrl, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (res.ok) {
+        const blob = await res.blob();
+        const fileUrl = window.URL.createObjectURL(blob);
+        window.open(fileUrl, "_blank");
+      } else {
+        window.open(fullUrl, "_blank");
+      }
+    } catch {
+      window.open(getFullResumeUrl(url), "_blank");
+    }
+  };
+
   return (
     <Modal
       isOpen={isOpen}
@@ -86,10 +113,11 @@ export const CandidateProfileModal: React.FC<CandidateProfileModalProps> = ({
                 <span>📄 Candidate Resume Available</span>
               </div>
               <a
-                href={`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}${profile.resume_url.replace("/api/v1", "")}`}
+                href={getFullResumeUrl(profile.resume_url)}
+                onClick={(e) => handleViewResume(e, profile.resume_url)}
                 target="_blank"
                 rel="noreferrer"
-                className="text-xs font-bold text-campusblue-800 hover:underline inline-flex items-center gap-1"
+                className="text-xs font-bold text-campusblue-800 hover:underline inline-flex items-center gap-1 cursor-pointer"
               >
                 <span>Open Resume PDF</span>
                 <span>&nearr;</span>

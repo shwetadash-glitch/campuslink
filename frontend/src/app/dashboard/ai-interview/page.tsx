@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
+import Link from 'next/link';
 import { AppLayout } from '@/components/layout/AppLayout';
 import {
     aiInterviewApi,
@@ -317,26 +318,20 @@ export default function AiInterviewPage() {
                                                 >
                                                     Resume Active Session
                                                 </button>
+                                            ) : item.last_session_id ? (
+                                                <button
+                                                    onClick={() => handleResumeOrViewReport(item.last_session_id!)}
+                                                    className="w-full py-2.5 px-4 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-xl text-sm font-semibold transition flex items-center justify-center gap-2"
+                                                >
+                                                    <span>View Evaluation &amp; Growth Plan</span>
+                                                    <span>→</span>
+                                                </button>
                                             ) : item.can_attempt ? (
                                                 <button
                                                     onClick={() => handleStartInterview(item.id)}
                                                     className="w-full py-2.5 px-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-semibold shadow-sm transition"
                                                 >
                                                     Start Interview
-                                                </button>
-                                            ) : item.attempts_used > 0 ? (
-                                                <button
-                                                    onClick={() => {
-                                                        // Load latest completed report
-                                                        if (item.active_session_id) {
-                                                            handleResumeOrViewReport(item.active_session_id);
-                                                        } else {
-                                                            loadInterviews();
-                                                        }
-                                                    }}
-                                                    className="w-full py-2.5 px-4 bg-slate-100 text-slate-700 hover:bg-slate-200 rounded-xl text-sm font-semibold transition"
-                                                >
-                                                    Attempt Completed
                                                 </button>
                                             ) : (
                                                 <span className="text-xs text-slate-400">Interview Ineligible</span>
@@ -628,6 +623,201 @@ export default function AiInterviewPage() {
                                 </div>
                             )}
                         </div>
+
+                        {/* Actionable Growth Plan Card */}
+                        {session.evaluation.actionable_growth_plan && (
+                            <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-6">
+                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100">
+                                    <div className="flex items-center gap-3">
+                                        <div className="p-2.5 rounded-xl bg-indigo-50 text-indigo-600 border border-indigo-100">
+                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
+                                            </svg>
+                                        </div>
+                                        <div>
+                                            <h3 className="font-bold text-slate-900 text-base">
+                                                Actionable Growth Plan & STAR Refinement
+                                            </h3>
+                                            <p className="text-xs text-slate-500 mt-0.5">
+                                                Prescriptive remediation steps, rubric target goals, and exemplary STAR reframings.
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    {session.evaluation.actionable_growth_plan.priority_level && (
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-2xs text-slate-500 uppercase font-bold">Priority:</span>
+                                            <span
+                                                className={`px-3 py-1 rounded-full text-2xs font-extrabold uppercase tracking-wider ${
+                                                    session.evaluation.actionable_growth_plan.priority_level === 'HIGH'
+                                                        ? 'bg-rose-100 text-rose-800 border border-rose-200'
+                                                        : session.evaluation.actionable_growth_plan.priority_level === 'MEDIUM'
+                                                        ? 'bg-amber-100 text-amber-800 border border-amber-200'
+                                                        : 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                                                }`}
+                                            >
+                                                {session.evaluation.actionable_growth_plan.priority_level} PRIORITY
+                                            </span>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Target Rubric Goals */}
+                                {session.evaluation.actionable_growth_plan.rubric_dimension_targets &&
+                                    session.evaluation.actionable_growth_plan.rubric_dimension_targets.length > 0 && (
+                                        <div className="space-y-4">
+                                            <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-2">
+                                                <span className="w-2 h-2 rounded-full bg-indigo-500" />
+                                                Target Rubric Remediation Goals
+                                            </h4>
+
+                                            <div className="grid grid-cols-1 gap-4">
+                                                {session.evaluation.actionable_growth_plan.rubric_dimension_targets.map(
+                                                    (target, idx) => (
+                                                        <div
+                                                            key={idx}
+                                                            className="p-4 bg-slate-50/70 rounded-xl border border-slate-200 space-y-3 text-left"
+                                                        >
+                                                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-slate-200/60">
+                                                                <span className="font-bold text-xs uppercase tracking-wide text-slate-900">
+                                                                    {target.dimension.replace(/_/g, ' ')}
+                                                                </span>
+
+                                                                <div className="flex items-center gap-2 text-2xs font-bold">
+                                                                    <span className="px-2 py-0.5 rounded bg-rose-50 text-rose-700 border border-rose-200">
+                                                                        Current: {target.current_score}%
+                                                                    </span>
+                                                                    <span className="text-slate-400">→</span>
+                                                                    <span className="px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                                                        Target: {target.target_score}%
+                                                                    </span>
+                                                                </div>
+                                                            </div>
+
+                                                            <div className="space-y-1.5 text-xs">
+                                                                <div className="text-slate-600">
+                                                                    <strong className="text-slate-800 font-semibold">Identified Gap: </strong>
+                                                                    {target.issue}
+                                                                </div>
+                                                                <div className="p-3 bg-white rounded-lg border border-slate-200 text-slate-800 font-serif leading-relaxed">
+                                                                    <strong className="text-indigo-700 font-sans font-semibold block mb-0.5">
+                                                                        Action Step:
+                                                                    </strong>
+                                                                    {target.action_step}
+                                                                </div>
+                                                            </div>
+
+                                                            {/* CTA practice links */}
+                                                            <div className="flex flex-wrap items-center justify-between gap-2 pt-2">
+                                                                {target.practice_topic && (
+                                                                    <span className="text-2xs font-medium text-slate-500 bg-white px-2.5 py-1 rounded border border-slate-200">
+                                                                        Topic: {target.practice_topic}
+                                                                    </span>
+                                                                )}
+
+                                                                {(target.deep_link || target.coach_scenario_id) && (
+                                                                    <Link
+                                                                        href={target.deep_link || '/dashboard/communication-coach'}
+                                                                        className="px-3.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold shadow-xs transition flex items-center gap-1.5 ml-auto"
+                                                                    >
+                                                                        <span>Practice in Communication Coach</span>
+                                                                        <span>→</span>
+                                                                    </Link>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    )
+                                                )}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                {/* Before vs After Exemplar Refinements */}
+                                {session.evaluation.actionable_growth_plan.exemplar_refinements &&
+                                    session.evaluation.actionable_growth_plan.exemplar_refinements.length > 0 && (
+                                        <div className="space-y-4 pt-4 border-t border-slate-100">
+                                            <div>
+                                                <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-2">
+                                                    <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                                                    STAR Method Exemplar Comparison (Before vs. After)
+                                                </h4>
+                                                <p className="text-xs text-slate-500 mt-1">
+                                                    Contrast your raw transcript quote with an AI-refined exemplar showcasing clear Situation, Task, Action, and quantified Result.
+                                                </p>
+                                            </div>
+
+                                            <div className="space-y-4">
+                                                {session.evaluation.actionable_growth_plan.exemplar_refinements.map(
+                                                    (ex, idx) => (
+                                                        <div
+                                                            key={idx}
+                                                            className="grid grid-cols-1 md:grid-cols-2 gap-4 rounded-xl border border-slate-200 p-4 bg-slate-50/50"
+                                                        >
+                                                            {/* Actual Candidate Quote */}
+                                                            <div className="p-4 bg-amber-50/60 rounded-xl border border-amber-200/80 space-y-2 text-left">
+                                                                <div className="flex items-center justify-between">
+                                                                    <span className="text-2xs uppercase font-extrabold tracking-wider text-amber-900">
+                                                                        Candidate Raw Quote (Before)
+                                                                    </span>
+                                                                    <span className="text-3xs px-2 py-0.5 rounded bg-amber-200/80 text-amber-900 font-bold">
+                                                                        Unstructured
+                                                                    </span>
+                                                                </div>
+                                                                <blockquote className="text-xs italic text-amber-950 font-serif leading-relaxed border-l-2 border-amber-400 pl-3">
+                                                                    "{ex.candidate_quote}"
+                                                                </blockquote>
+                                                                <p className="text-3xs text-amber-700 font-sans">
+                                                                    Gap: Lacks quantified metrics and explicit STAR structure.
+                                                                </p>
+                                                            </div>
+
+                                                            {/* AI-Refined Exemplar */}
+                                                            <div className="p-4 bg-emerald-50/70 rounded-xl border border-emerald-200 space-y-2 text-left">
+                                                                <div className="flex items-center justify-between">
+                                                                    <span className="text-2xs uppercase font-extrabold tracking-wider text-emerald-900">
+                                                                        AI-Refined STAR Exemplar (After)
+                                                                    </span>
+                                                                    <span className="text-3xs px-2 py-0.5 rounded bg-emerald-200 text-emerald-900 font-bold">
+                                                                        High Impact
+                                                                    </span>
+                                                                </div>
+                                                                <div className="text-xs text-emerald-950 font-serif leading-relaxed border-l-2 border-emerald-500 pl-3">
+                                                                    {ex.improved_exemplar}
+                                                                </div>
+                                                                <p className="text-3xs text-emerald-700 font-sans">
+                                                                    Strength: Details clear Situation, Task, personal Action, and quantified Result.
+                                                                </p>
+                                                            </div>
+                                                        </div>
+                                                    )
+                                                )}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                {/* Navigation CTAs */}
+                                <div className="pt-4 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-3">
+                                    <Link
+                                        href="/dashboard/communication-coach"
+                                        className="text-xs font-semibold text-indigo-600 hover:text-indigo-800 flex items-center gap-1"
+                                    >
+                                        <span>Explore Communication Coach Hub</span>
+                                        <span>→</span>
+                                    </Link>
+
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setViewMode('LOBBY');
+                                            loadInterviews();
+                                        }}
+                                        className="px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold transition"
+                                    >
+                                        Return to Interviews Lobby
+                                    </button>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 )}
             </div>

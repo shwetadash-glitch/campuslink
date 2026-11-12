@@ -61,6 +61,34 @@ export const ResumeCard: React.FC<ResumeCardProps> = ({
     }
   };
 
+  const getFullResumeUrl = (url: string | null | undefined) => {
+    if (!url) return "#";
+    if (url.startsWith("http")) return url;
+    const base = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+    return `${base}${url.startsWith("/") ? "" : "/"}${url}`;
+  };
+
+  const handleViewResume = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (!resumeUrl) return;
+    try {
+      const fullUrl = getFullResumeUrl(resumeUrl);
+      const token = typeof window !== "undefined" ? (localStorage.getItem("access_token") || localStorage.getItem("token")) : null;
+      const res = await fetch(fullUrl, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (res.ok) {
+        const blob = await res.blob();
+        const fileUrl = window.URL.createObjectURL(blob);
+        window.open(fileUrl, "_blank");
+      } else {
+        window.open(fullUrl, "_blank");
+      }
+    } catch {
+      window.open(getFullResumeUrl(resumeUrl), "_blank");
+    }
+  };
+
   return (
     <Card
       title="Resume / CV"
@@ -78,10 +106,11 @@ export const ResumeCard: React.FC<ResumeCardProps> = ({
               <div>
                 <h4 className="text-sm font-semibold text-campusblue-900">Resume Uploaded</h4>
                 <a
-                  href={`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}${resumeUrl.replace("/api/v1", "")}`}
+                  href={getFullResumeUrl(resumeUrl)}
+                  onClick={handleViewResume}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-xs text-campusblue-800 hover:underline inline-flex items-center gap-1 mt-0.5"
+                  className="text-xs text-campusblue-800 hover:underline inline-flex items-center gap-1 mt-0.5 cursor-pointer"
                 >
                   <span>View Uploaded PDF</span>
                   <span>&nearr;</span>

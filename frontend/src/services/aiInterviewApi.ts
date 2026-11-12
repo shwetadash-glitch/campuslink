@@ -13,6 +13,7 @@ export interface AiInterviewListItem {
     attempts_used: number;
     can_attempt: boolean;
     active_session_id?: number;
+    last_session_id?: number;
     last_score?: number;
     last_passed?: boolean;
     is_provisional?: boolean;
@@ -27,6 +28,28 @@ export interface InterviewMessage {
     content: string;
     is_follow_up: boolean;
     created_at?: string;
+}
+
+export interface RubricDimensionTarget {
+    dimension: string;
+    current_score: number;
+    target_score: number;
+    issue: string;
+    action_step: string;
+    coach_scenario_id?: string;
+    deep_link?: string;
+    practice_topic?: string;
+}
+
+export interface ExemplarRefinement {
+    candidate_quote: string;
+    improved_exemplar: string;
+}
+
+export interface ActionableGrowthPlan {
+    priority_level: 'HIGH' | 'MEDIUM' | 'LOW';
+    rubric_dimension_targets: RubricDimensionTarget[];
+    exemplar_refinements: ExemplarRefinement[];
 }
 
 export interface CandidateInterviewSession {
@@ -54,10 +77,12 @@ export interface CandidateInterviewSession {
             communication_clarity?: number;
             behavioral_star_alignment?: number;
         };
+        overall_assessment?: string;
         strengths?: string[];
         weaknesses?: string[];
         quote_evidence?: string[];
         recommendation?: string;
+        actionable_growth_plan?: ActionableGrowthPlan;
     };
 }
 

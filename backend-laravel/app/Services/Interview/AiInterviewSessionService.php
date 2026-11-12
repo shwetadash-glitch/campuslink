@@ -302,10 +302,12 @@ class AiInterviewSessionService
                 'passed' => $session->passed,
                 'is_provisional' => $session->is_provisional,
                 'dimension_scores' => $session->dimension_scores,
+                'overall_assessment' => $session->ai_evaluation_summary['overall_assessment'] ?? null,
                 'strengths' => $session->ai_evaluation_summary['strengths'] ?? [],
                 'weaknesses' => $session->ai_evaluation_summary['weaknesses'] ?? [],
                 'quote_evidence' => $session->ai_evaluation_summary['quote_evidence'] ?? [],
                 'recommendation' => $session->ai_evaluation_summary['recommendation'] ?? null,
+                'actionable_growth_plan' => $session->ai_evaluation_summary['actionable_growth_plan'] ?? null,
             ] : null,
         ];
     }

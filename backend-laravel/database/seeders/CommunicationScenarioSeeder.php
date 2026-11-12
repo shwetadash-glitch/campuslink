@@ -27,6 +27,7 @@ class CommunicationScenarioSeeder extends Seeder
                 'recommended_max_words' => 200,
                 'key_focus_areas' => ['Long-term vision', 'Specific learning milestones', 'Alignment with company mission'],
                 'curated_factual_guidance' => 'Focus on realistic software engineering growth milestones (e.g. progressing from feature implementation to component ownership and architectural design).',
+                'is_dynamic' => false,
             ],
             [
                 'category' => CommunicationCategory::HR_INTERVIEW->value,
@@ -41,6 +42,22 @@ class CommunicationScenarioSeeder extends Seeder
                 'recommended_max_words' => 250,
                 'key_focus_areas' => ['Proactive requirement discovery', 'Iterative milestone breakdown', 'Stakeholder alignment'],
                 'curated_factual_guidance' => 'Candidate should describe identifying key stakeholders, establishing assumptions, and creating small testable increments.',
+                'is_dynamic' => false,
+            ],
+            [
+                'category' => CommunicationCategory::HR_INTERVIEW->value,
+                'title' => 'Handling Technical Disagreements in Engineering Teams',
+                'prompt_text' => 'Tell me about a time when you and a peer or tech lead had fundamentally opposing views on how to design an API or database schema. How did you navigate the conversation and find common ground?',
+                'context_scenario' => 'Behavioral placement interview for a Core Systems engineering position where cross-functional collaboration is vital.',
+                'target_audience' => 'Principal Engineer & Engineering Director',
+                'difficulty' => 'INTERMEDIATE',
+                'min_word_limit' => 40,
+                'max_word_limit' => 400,
+                'recommended_min_words' => 90,
+                'recommended_max_words' => 220,
+                'key_focus_areas' => ['STAR Framework', 'Objective benchmarking over ego', 'Collaborative empathy'],
+                'curated_factual_guidance' => 'Effective conflict resolution leverages objective criteria (profiling benchmarks, latency measurements, maintainability) while preserving team psychological safety.',
+                'is_dynamic' => false,
             ],
             [
                 'category' => CommunicationCategory::HR_INTERVIEW->value,
@@ -54,16 +71,32 @@ class CommunicationScenarioSeeder extends Seeder
                 'recommended_min_words' => 60,
                 'recommended_max_words' => 180,
                 'key_focus_areas' => ['Professional diplomacy', 'Total rewards understanding', 'Focus on mutual value'],
-                'curated_factual_guidance' => 'Professional compensation discussions should balance market benchmarking, growth opportunities, and total rewards (learning, equity, base) without rigid ultimatums.',
+                'curated_factual_guidance' => 'Professional compensation discussions should balance market benchmarking, growth opportunities, and total rewards without rigid ultimatums.',
+                'is_dynamic' => false,
             ],
 
             // -------------------------------------------------------------
-            // 2. TECHNICAL_EXPLANATION
+            // 2. TECHNICAL_EXPLANATION (Voice-First Practice)
             // -------------------------------------------------------------
             [
                 'category' => CommunicationCategory::TECHNICAL_EXPLANATION->value,
-                'title' => 'Explaining Database Indexing to a Non-Technical PM',
-                'prompt_text' => 'Explain why our application dashboard is slow and how adding a database index (B-Tree) will resolve the query latency, using plain language.',
+                'title' => 'Explaining Kafka Message Queues to a Non-Technical PM',
+                'prompt_text' => 'Speak for 90 to 180 seconds using your microphone. Explain how Apache Kafka message queues work and why they prevent customer orders from being lost during sudden traffic spikes, using intuitive real-world analogies and zero unexplained jargon.',
+                'context_scenario' => 'Your Non-Technical Project Manager is concerned about dropped orders ahead of an upcoming Black Friday flash sale and asks why engineering wants to introduce a Kafka broker between the frontend and fulfillment services.',
+                'target_audience' => 'Non-Technical Project Manager',
+                'difficulty' => 'BEGINNER',
+                'min_word_limit' => 40,
+                'max_word_limit' => 450,
+                'recommended_min_words' => 90,
+                'recommended_max_words' => 220,
+                'key_focus_areas' => ['Post Office / Buffer Analogy', 'Decoupled Reliability', 'Eliminating Jargon', 'Optimal 130-155 WPM Cadence'],
+                'curated_factual_guidance' => 'Kafka acts as an append-only distributed commit log (like a durable post office mailbox). Even if downstream databases crash or slow down, customer requests are safely timestamped and held in memory/disk until consumers recover.',
+                'is_dynamic' => false,
+            ],
+            [
+                'category' => CommunicationCategory::TECHNICAL_EXPLANATION->value,
+                'title' => 'Explaining Database Indexing (B-Tree) to a Non-Technical PM',
+                'prompt_text' => 'Explain why our application dashboard search is sluggish and how adding a B-Tree database index will resolve query latency, using plain language and an everyday analogy.',
                 'context_scenario' => 'Your non-technical Product Manager wants to know why search is sluggish and why engineering needs half a sprint to tune database queries.',
                 'target_audience' => 'Non-Technical Product Manager',
                 'difficulty' => 'INTERMEDIATE',
@@ -71,12 +104,13 @@ class CommunicationScenarioSeeder extends Seeder
                 'max_word_limit' => 450,
                 'recommended_min_words' => 90,
                 'recommended_max_words' => 250,
-                'key_focus_areas' => ['Intuitive analogy (e.g. book index)', 'Trade-off transparency (faster reads, slower writes)', 'Clear business impact'],
+                'key_focus_areas' => ['Book index analogy', 'Trade-off transparency (faster reads, slower writes)', 'Clear business impact'],
                 'curated_factual_guidance' => 'A database index allows the engine to locate records in O(log n) time without scanning all rows (full table scan). The key trade-off is additional storage and slight overhead during INSERT/UPDATE operations.',
+                'is_dynamic' => false,
             ],
             [
                 'category' => CommunicationCategory::TECHNICAL_EXPLANATION->value,
-                'title' => 'Explaining Cache Invalidation and Eventual Consistency',
+                'title' => 'Explaining Redis Distributed Caching Architecture & Invalidation',
                 'prompt_text' => 'Explain to an intern why a user might temporarily see outdated profile details after updating their avatar, and how our cache invalidation handles it.',
                 'context_scenario' => 'You are mentoring a junior intern who noticed a 2-second discrepancy between user profile updates and CDN/Redis cache refresh.',
                 'target_audience' => 'Junior Software Engineering Intern',
@@ -87,6 +121,7 @@ class CommunicationScenarioSeeder extends Seeder
                 'recommended_max_words' => 250,
                 'key_focus_areas' => ['Clarity of technical trade-offs', 'Supportive coaching tone', 'Mechanics of TTL and write-through cache'],
                 'curated_factual_guidance' => 'Eventual consistency allows high read throughput by caching data near users. When updates occur, caches are invalidated via TTL or pub/sub events; there is a brief propagation window where stale reads can occur.',
+                'is_dynamic' => false,
             ],
             [
                 'category' => CommunicationCategory::TECHNICAL_EXPLANATION->value,
@@ -101,10 +136,11 @@ class CommunicationScenarioSeeder extends Seeder
                 'recommended_max_words' => 250,
                 'key_focus_areas' => ['Network hop serialization', 'Clear justification of microservice benefits (independent scaling)', 'Remediation options'],
                 'curated_factual_guidance' => 'In-process memory calls in a monolith take microseconds. Microservices communicate over HTTP/gRPC networks adding serialization, network transit, and connection handshake overhead, compensated by independent scaling and fault isolation.',
+                'is_dynamic' => false,
             ],
 
             // -------------------------------------------------------------
-            // 3. GROUP_DISCUSSION
+            // 3. GROUP_DISCUSSION (Deferred Voice Notice Demo)
             // -------------------------------------------------------------
             [
                 'category' => CommunicationCategory::GROUP_DISCUSSION->value,
@@ -119,6 +155,7 @@ class CommunicationScenarioSeeder extends Seeder
                 'recommended_max_words' => 180,
                 'key_focus_areas' => ['Validating peer perspective', 'Presenting ACID transaction requirements objectively', 'Collaborative framing'],
                 'curated_factual_guidance' => 'Financial ledgers require strict ACID guarantees and relational constraints to avoid double-entry imbalance. Relational databases (e.g. PostgreSQL) provide robust transactional guarantees compared to document stores.',
+                'is_dynamic' => false,
             ],
             [
                 'category' => CommunicationCategory::GROUP_DISCUSSION->value,
@@ -133,6 +170,7 @@ class CommunicationScenarioSeeder extends Seeder
                 'recommended_max_words' => 150,
                 'key_focus_areas' => ['Diplomatic interjection', 'Time management awareness', 'Action-oriented redirection'],
                 'curated_factual_guidance' => 'Effective leadership involves acknowledging the team energy while anchoring back to primary deliverables and remaining time constraints.',
+                'is_dynamic' => false,
             ],
             [
                 'category' => CommunicationCategory::GROUP_DISCUSSION->value,
@@ -147,14 +185,15 @@ class CommunicationScenarioSeeder extends Seeder
                 'recommended_max_words' => 200,
                 'key_focus_areas' => ['Summarizing core arguments accurately', 'Proposing hybrid evaluation criteria', 'Fostering unity'],
                 'curated_factual_guidance' => 'A balanced build-vs-buy analysis weighs total cost of ownership, time to market, core vs context functionality, and maintenance overhead.',
+                'is_dynamic' => false,
             ],
 
             // -------------------------------------------------------------
-            // 4. PROFESSIONAL_EMAIL
+            // 4. PROFESSIONAL_EMAIL (Dynamic AI Topics & Seeded Challenges)
             // -------------------------------------------------------------
             [
                 'category' => CommunicationCategory::PROFESSIONAL_EMAIL->value,
-                'title' => 'Escalating an Unforeseen Sprint Blocker',
+                'title' => 'Escalating an Unforeseen Sprint Blocker (Payment Outage)',
                 'prompt_text' => 'Draft a concise, professional email to your Engineering Lead and Project Manager informing them that a third-party payment gateway outage will delay tomorrow\'s release.',
                 'context_scenario' => 'It is 4:00 PM on Thursday; the external sandbox environment has suffered an unannounced outage, blocking end-to-end payment testing.',
                 'target_audience' => 'Engineering Lead and Project Manager',
@@ -165,6 +204,37 @@ class CommunicationScenarioSeeder extends Seeder
                 'recommended_max_words' => 180,
                 'key_focus_areas' => ['Clear executive summary up front', 'Impact scope', 'Mitigation steps and proposed timeline'],
                 'curated_factual_guidance' => 'Escalation emails should clearly state the issue, concrete business impact, mitigation steps already taken, and clear next decision points.',
+                'is_dynamic' => false,
+            ],
+            [
+                'category' => CommunicationCategory::PROFESSIONAL_EMAIL->value,
+                'title' => 'Incident Escalation: Cloud Infrastructure Interruption',
+                'prompt_text' => 'Draft a professional incident notification email to the VP of Engineering. Acknowledge the latency interruption with immediate ownership, outline the temporary mitigation applied, summarize the permanent architectural fix underway, and propose a follow-up review schedule without over-promising turnaround times.',
+                'context_scenario' => 'During today\'s automated deployment cycle in the Cloud Infrastructure environment, a configuration drift caused transient latency spikes and affected customer checkout calls for 42 minutes.',
+                'target_audience' => 'Strict VP of Engineering (concerned with system uptime and SLA breaches)',
+                'difficulty' => 'INTERMEDIATE',
+                'min_word_limit' => 40,
+                'max_word_limit' => 300,
+                'recommended_min_words' => 80,
+                'recommended_max_words' => 180,
+                'key_focus_areas' => ['Tone Calibration', 'Executive Summary', 'Clear Call-to-Action', 'Risk Mitigation'],
+                'curated_factual_guidance' => 'Emphasize root-cause transparency, avoid defensive blame towards third-party suppliers, and establish clear follow-up timelines.',
+                'is_dynamic' => true,
+            ],
+            [
+                'category' => CommunicationCategory::PROFESSIONAL_EMAIL->value,
+                'title' => 'Milestone Re-alignment: Scope Negotiation with Leadership',
+                'prompt_text' => 'Write a structured realignment email. Explain the technical trade-off between rushing an unverified schema versus extending the timeline by one sprint. Provide two concrete compromise options (such as phased feature flags or dark launching) and request a 15-minute decision check-in.',
+                'context_scenario' => 'Your cross-functional engineering squad is two weeks away from delivering the Q3 milestone for Enterprise SaaS. Newly discovered schema dependencies require an extra sprint of refactoring to ensure data integrity and prevent security compliance violations.',
+                'target_audience' => 'VP of Product concerned about missed deadlines',
+                'difficulty' => 'ADVANCED',
+                'min_word_limit' => 40,
+                'max_word_limit' => 300,
+                'recommended_min_words' => 80,
+                'recommended_max_words' => 190,
+                'key_focus_areas' => ['Trade-off Framing', 'Options Presentation', 'Diplomatic Firmness', 'Decisive Call-to-Action'],
+                'curated_factual_guidance' => 'Articulate business risks clearly, avoid overly dense technical jargon, and present well-reasoned compromise options.',
+                'is_dynamic' => true,
             ],
             [
                 'category' => CommunicationCategory::PROFESSIONAL_EMAIL->value,
@@ -179,6 +249,7 @@ class CommunicationScenarioSeeder extends Seeder
                 'recommended_max_words' => 150,
                 'key_focus_areas' => ['Genuine appreciation', 'Specific technical recall from the discussion', 'Reiteration of enthusiasm'],
                 'curated_factual_guidance' => 'A strong follow-up email references a specific technical problem discussed during the interview and expresses professional gratitude without sounding presumptuous.',
+                'is_dynamic' => false,
             ],
             [
                 'category' => CommunicationCategory::PROFESSIONAL_EMAIL->value,
@@ -193,29 +264,31 @@ class CommunicationScenarioSeeder extends Seeder
                 'recommended_max_words' => 220,
                 'key_focus_areas' => ['Clear business rationale', 'Proposed non-breaking versioning strategy', 'Call to schedule a 15-minute sync'],
                 'curated_factual_guidance' => 'Cross-team API change requests should respect the owning team\'s backlog, propose versioned or additive changes to avoid breaking existing consumers, and offer engineering assistance.',
+                'is_dynamic' => false,
             ],
 
             // -------------------------------------------------------------
-            // 5. STRUCTURED_SPEAKING
+            // 5. STRUCTURED_SPEAKING (Voice Cockpit & Frameworks)
             // -------------------------------------------------------------
             [
                 'category' => CommunicationCategory::STRUCTURED_SPEAKING->value,
-                'title' => '2-Minute Elevator Pitch for Capstone Project',
-                'prompt_text' => 'Draft the written script of your 2-minute elevator pitch explaining your capstone distributed key-value store to a hiring manager at a campus job fair.',
+                'title' => '2-Minute Elevator Pitch for Capstone Project (PREP Framework)',
+                'prompt_text' => 'Speak into your device microphone for 90 to 120 seconds. Use the PREP Framework (Point -> Reason -> Example -> Point Recap) to deliver an authoritative pitch of your capstone distributed key-value store to a campus recruiter.',
                 'context_scenario' => 'You have 90 seconds to capture the interest of a Senior Cloud Architect visiting your university placement booth.',
-                'target_audience' => 'Senior Cloud Architect',
+                'target_audience' => 'Senior Cloud Architect & Hiring Lead',
                 'difficulty' => 'INTERMEDIATE',
                 'min_word_limit' => 40,
                 'max_word_limit' => 400,
                 'recommended_min_words' => 90,
                 'recommended_max_words' => 220,
-                'key_focus_areas' => ['Hook and problem framing', 'Technical architecture highlight (consensus, replication)', 'Measurable performance outcome'],
+                'key_focus_areas' => ['PREP Framework', 'Pacing (130-155 WPM)', 'Raft Consensus Benchmark', 'Hook & Concluding Recap'],
                 'curated_factual_guidance' => 'An effective technical pitch states the problem, describes the architecture (e.g. Raft consensus, LSM-tree storage engine), and highlights concrete benchmark metrics (e.g. 10k ops/sec with sub-5ms p99 latency).',
+                'is_dynamic' => false,
             ],
             [
                 'category' => CommunicationCategory::STRUCTURED_SPEAKING->value,
-                'title' => 'Incident Post-Mortem Executive Briefing',
-                'prompt_text' => 'Draft the introductory 2-minute spoken briefing summarizing a major database connection pool exhaustion incident that caused a 20-minute outage.',
+                'title' => 'Incident Post-Mortem Executive Briefing (STAR Framework)',
+                'prompt_text' => 'Speak for 90 to 150 seconds. Apply the STAR Framework (Situation -> Task -> Action -> Result) to summarize how connection pool exhaustion caused an outage and what systemic safeguards were implemented.',
                 'context_scenario' => 'You are opening the blameless post-mortem review with the VP of Engineering and Operations leads.',
                 'target_audience' => 'VP of Engineering and Operations Team',
                 'difficulty' => 'ADVANCED',
@@ -223,8 +296,9 @@ class CommunicationScenarioSeeder extends Seeder
                 'max_word_limit' => 450,
                 'recommended_min_words' => 100,
                 'recommended_max_words' => 250,
-                'key_focus_areas' => ['Blameless framing', 'Clear timeline and blast radius', 'Root cause and permanent preventive actions'],
+                'key_focus_areas' => ['STAR Framework', 'Blameless culture', 'Quantitative metrics', 'Permanent architectural fix'],
                 'curated_factual_guidance' => 'Blameless post-mortems focus on systemic vulnerabilities (e.g. unpooled connection leak under traffic spikes, lack of circuit breaker) rather than individual human error, outlining permanent preventative safeguards.',
+                'is_dynamic' => false,
             ],
             [
                 'category' => CommunicationCategory::STRUCTURED_SPEAKING->value,
@@ -239,6 +313,7 @@ class CommunicationScenarioSeeder extends Seeder
                 'recommended_max_words' => 200,
                 'key_focus_areas' => ['Inspirational tone', 'Clarifying shared success metrics', 'Inviting cross-discipline participation'],
                 'curated_factual_guidance' => 'Kick-off remarks unify the team around user outcomes, clarify the timeline, define channels for raising blockers, and establish psychological safety for collaboration.',
+                'is_dynamic' => false,
             ],
         ];
 

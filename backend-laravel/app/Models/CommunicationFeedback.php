@@ -16,6 +16,9 @@ class CommunicationFeedback extends Model
     protected $casts = [
         'overall_score' => 'float',
         'rubric_scores' => 'array',
+        'delivery_scores' => 'array',
+        'acoustic_analytics' => 'array',
+        'structural_framework_critique' => 'array',
         'factual_technical_evaluation' => 'array',
         'strengths' => 'array',
         'areas_to_improve' => 'array',

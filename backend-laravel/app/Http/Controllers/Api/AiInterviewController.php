@@ -390,6 +390,7 @@ class AiInterviewController extends Controller
                     'attempts_used' => $pastSessions->count(),
                     'can_attempt' => ($pastSessions->count() < 1) || ($activeSession !== null),
                     'active_session_id' => $activeSession?->id,
+                    'last_session_id' => $lastEvaluated?->id,
                     'last_score' => $lastEvaluated?->total_score,
                     'last_passed' => $lastEvaluated?->passed,
                     'is_provisional' => $lastEvaluated?->is_provisional,

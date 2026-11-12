@@ -186,6 +186,10 @@ class AiInterviewEvaluatorService
             . "- problem_solving (0 to 100): Structured reasoning, handling constraints, and edge-case awareness.\n"
             . "- communication_clarity (0 to 100): Articulation, precision, structure, and professional tone.\n"
             . "- behavioral_star_alignment (0 to 100): Adherence to Situation, Task, Action, Result framework.\n\n"
+            . "ACTIONABLE GROWTH PLAN DIRECTIVES:\n"
+            . "- For ANY dimension scoring < 70, formulate a concrete rubric target with specific issue and remedial action steps.\n"
+            . "- Extract 1 candidate quote from transcript and reframe it into an exemplar STAR response demonstrating Situation, Task, Action, Result with quantified metrics.\n"
+            . "- Set priority_level to 'HIGH' if any dimension < 55, else 'MEDIUM' or 'LOW'.\n\n"
             . "<interview_transcript>\n" . json_encode($transcript, JSON_PRETTY_PRINT) . "\n</interview_transcript>\n\n"
             . "CRITICAL INSTRUCTIONS & FORMAT:\n"
             . "- Return a STRICT JSON object conforming to this structure:\n"
@@ -203,7 +207,27 @@ class AiInterviewEvaluatorService
             . "    \"strengths\": [\"Strength 1\", \"Strength 2\"],\n"
             . "    \"weaknesses\": [\"Area for improvement 1\"],\n"
             . "    \"quote_evidence\": [\"Exact verbatim quote from candidate answer\"],\n"
-            . "    \"recommendation\": \"HIRE\"\n"
+            . "    \"recommendation\": \"HIRE\",\n"
+            . "    \"actionable_growth_plan\": {\n"
+            . "      \"priority_level\": \"HIGH\",\n"
+            . "      \"rubric_dimension_targets\": [\n"
+            . "        {\n"
+            . "          \"dimension\": \"behavioral_star_alignment\",\n"
+            . "          \"current_score\": 45,\n"
+            . "          \"target_score\": 75,\n"
+            . "          \"issue\": \"Answers lacked quantifiable business outcomes and specific actions taken.\",\n"
+            . "          \"action_step\": \"Structure every narrative around: Situation (15%), Task (15%), Action (50%), Result (20%). Explicitly cite numeric impact.\",\n"
+            . "          \"coach_scenario_id\": \"hr_star_behavioral_mastery\",\n"
+            . "          \"deep_link\": \"/dashboard/communication-coach/practice/hr_star_behavioral_mastery\"\n"
+            . "        }\n"
+            . "      ],\n"
+            . "      \"exemplar_refinements\": [\n"
+            . "        {\n"
+            . "          \"candidate_quote\": \"I helped my team build a website and it worked well.\",\n"
+            . "          \"improved_exemplar\": \"In our final year project (Situation), our registration portal suffered 5-second latency (Task). I refactored the SQL queries and added Redis caching for user sessions (Action), which decreased page load latency by 68% and supported 1,200 concurrent users without timeouts (Result).\"\n"
+            . "        }\n"
+            . "      ]\n"
+            . "    }\n"
             . "  }\n"
             . "}\n";
 
@@ -251,6 +275,38 @@ class AiInterviewEvaluatorService
                                 'type' => 'string',
                                 'enum' => ['STRONG_HIRE', 'HIRE', 'LEANING_HIRE', 'LEANING_NO_HIRE', 'NO_HIRE'],
                             ],
+                            'actionable_growth_plan' => [
+                                'type' => 'object',
+                                'properties' => [
+                                    'priority_level' => ['type' => 'string', 'enum' => ['HIGH', 'MEDIUM', 'LOW']],
+                                    'rubric_dimension_targets' => [
+                                        'type' => 'array',
+                                        'items' => [
+                                            'type' => 'object',
+                                            'properties' => [
+                                                'dimension' => ['type' => 'string'],
+                                                'current_score' => ['type' => 'number'],
+                                                'target_score' => ['type' => 'number'],
+                                                'issue' => ['type' => 'string'],
+                                                'action_step' => ['type' => 'string'],
+                                                'coach_scenario_id' => ['type' => 'string'],
+                                                'deep_link' => ['type' => 'string'],
+                                                'practice_topic' => ['type' => 'string'],
+                                            ],
+                                        ],
+                                    ],
+                                    'exemplar_refinements' => [
+                                        'type' => 'array',
+                                        'items' => [
+                                            'type' => 'object',
+                                            'properties' => [
+                                                'candidate_quote' => ['type' => 'string'],
+                                                'improved_exemplar' => ['type' => 'string'],
+                                            ],
+                                        ],
+                                    ],
+                                ],
+                            ],
                         ],
                     ],
                 ],
@@ -281,6 +337,7 @@ class AiInterviewEvaluatorService
                         'weaknesses' => (array) ($response['weaknesses'] ?? []),
                         'quote_evidence' => (array) ($response['quote_evidence'] ?? []),
                         'recommendation' => (string) ($response['recommendation'] ?? 'LEANING_HIRE'),
+                        'actionable_growth_plan' => (array) ($response['actionable_growth_plan'] ?? []),
                     ];
                 }
 
@@ -378,6 +435,9 @@ class AiInterviewEvaluatorService
         $summary['security_telemetry'] = $securityTelemetry;
         $summary['generated_by_model'] = $this->aiManager->getModelName();
         $summary['is_simulated'] = $isSimulated;
+
+        // Ensure robust actionable growth plan with dimension targets and exemplar refinements
+        $this->ensureActionableGrowthPlan($summary, $dimensionScores, $candidateCorpus);
 
         $status = ($session->status === 'EXPIRED') ? 'EXPIRED' : 'EVALUATED';
 
@@ -539,5 +599,128 @@ class AiInterviewEvaluatorService
             default:
                 return 'What trade-offs did you consider in choosing this specific approach over alternative patterns?';
         }
+    }
+
+    /**
+     * Ensure actionable growth plan exists with dimension remediation targets and exemplar STAR refinements.
+     */
+    protected function ensureActionableGrowthPlan(array &$summary, array $dimensionScores, string $candidateCorpus): void
+    {
+        $existingPlan = $summary['actionable_growth_plan'] ?? [];
+        $existingTargets = is_array($existingPlan['rubric_dimension_targets'] ?? null)
+            ? $existingPlan['rubric_dimension_targets']
+            : [];
+        $existingExemplars = is_array($existingPlan['exemplar_refinements'] ?? null)
+            ? $existingPlan['exemplar_refinements']
+            : [];
+
+        // 1. Identify dimensions needing remediation (< 70)
+        $targets = [];
+        $targetDimensions = [];
+
+        foreach ($existingTargets as $target) {
+            if (is_array($target) && !empty($target['dimension'])) {
+                $targets[] = $target;
+                $targetDimensions[] = $target['dimension'];
+            }
+        }
+
+        // Canonical default remediation definitions for dimensions
+        $dimensionBlueprints = [
+            'behavioral_star_alignment' => [
+                'target_score' => 75,
+                'issue' => 'Answers lacked quantifiable business outcomes and specific individual actions taken.',
+                'action_step' => 'Structure every narrative around: Situation (15%), Task (15%), Action (50%), Result (20%). Explicitly cite numeric impact.',
+                'coach_scenario_id' => 'hr_star_behavioral_mastery',
+                'deep_link' => '/dashboard/communication-coach/practice/hr_star_behavioral_mastery',
+            ],
+            'technical_depth' => [
+                'target_score' => 75,
+                'issue' => 'Did not explore failure modes, caching strategies, or architectural trade-offs when prompted for system scale.',
+                'action_step' => 'Review Redis caching patterns (Cache-Aside, Write-Through) and database read-replicas.',
+                'practice_topic' => 'System Design: Scalable Read-Heavy Architectures',
+            ],
+            'problem_solving' => [
+                'target_score' => 75,
+                'issue' => 'Rushed into implementation without clarifying constraints or analyzing edge cases.',
+                'action_step' => 'Follow structured decomposition: clarify bounds, evaluate time/space trade-offs, state loop invariants, and dry run test cases.',
+                'practice_topic' => 'Algorithmic Problem Solving & Edge Case Analysis',
+            ],
+            'communication_clarity' => [
+                'target_score' => 75,
+                'issue' => 'Jargon without concise definitions and unstructured rambling explanations.',
+                'action_step' => 'Deliver top-down technical summaries: state core definition in sentence 1, follow with trade-offs and key considerations.',
+                'coach_scenario_id' => 'technical_clarity_mastery',
+                'deep_link' => '/dashboard/communication-coach',
+            ],
+        ];
+
+        foreach ($dimensionScores as $dim => $score) {
+            if ($score < 70 && !in_array($dim, $targetDimensions, true) && isset($dimensionBlueprints[$dim])) {
+                $bp = $dimensionBlueprints[$dim];
+                $targetItem = [
+                    'dimension' => $dim,
+                    'current_score' => (int) round($score),
+                    'target_score' => $bp['target_score'],
+                    'issue' => $bp['issue'],
+                    'action_step' => $bp['action_step'],
+                ];
+                if (!empty($bp['coach_scenario_id'])) {
+                    $targetItem['coach_scenario_id'] = $bp['coach_scenario_id'];
+                    $targetItem['deep_link'] = $bp['deep_link'];
+                }
+                if (!empty($bp['practice_topic'])) {
+                    $targetItem['practice_topic'] = $bp['practice_topic'];
+                }
+                $targets[] = $targetItem;
+            }
+        }
+
+        // If no dimension scored < 70, pick the lowest dimension for continual growth
+        if (empty($targets)) {
+            asort($dimensionScores);
+            $lowestDim = array_key_first($dimensionScores);
+            if ($lowestDim && isset($dimensionBlueprints[$lowestDim])) {
+                $bp = $dimensionBlueprints[$lowestDim];
+                $lowestScore = (int) round($dimensionScores[$lowestDim]);
+                $targets[] = [
+                    'dimension' => $lowestDim,
+                    'current_score' => $lowestScore,
+                    'target_score' => max(85, $lowestScore + 10),
+                    'issue' => 'Good baseline, but could advance to master level by adding deeper architectural justifications.',
+                    'action_step' => $bp['action_step'],
+                    'practice_topic' => $bp['practice_topic'] ?? 'Advanced Technical Mastery',
+                ];
+            }
+        }
+
+        // 2. Exemplar refinements
+        $exemplars = [];
+        foreach ($existingExemplars as $ex) {
+            if (is_array($ex) && !empty($ex['candidate_quote']) && !empty($ex['improved_exemplar'])) {
+                $exemplars[] = $ex;
+            }
+        }
+
+        if (empty($exemplars)) {
+            $quote = !empty($summary['quote_evidence'][0])
+                ? $summary['quote_evidence'][0]
+                : 'I helped my team build a website and it worked well.';
+
+            $exemplars[] = [
+                'candidate_quote' => $quote,
+                'improved_exemplar' => 'In our final year project (Situation), our registration portal suffered 5-second latency (Task). I refactored the SQL queries and added Redis caching for user sessions (Action), which decreased page load latency by 68% and supported 1,200 concurrent users without timeouts (Result).',
+            ];
+        }
+
+        // 3. Priority level
+        $minScore = !empty($dimensionScores) ? min($dimensionScores) : 70;
+        $priority = ($minScore < 55) ? 'HIGH' : (($minScore < 70) ? 'MEDIUM' : 'LOW');
+
+        $summary['actionable_growth_plan'] = [
+            'priority_level' => $existingPlan['priority_level'] ?? $priority,
+            'rubric_dimension_targets' => $targets,
+            'exemplar_refinements' => $exemplars,
+        ];
     }
 }

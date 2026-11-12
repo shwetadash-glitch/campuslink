@@ -10,10 +10,16 @@ class CheckRole
 {
     public function handle(Request $request, Closure $next, ...$roles): Response
     {
-        if (!$request->user() || !in_array($request->user()->role, $roles)) {
-            return response()->json(['detail' => 'Forbidden'], 403);
+        $user = $request->user();
+        if (!$user) {
+            return response()->json(['detail' => 'Unauthenticated'], 401);
         }
 
-        return $next($request);
+        // Super Admin has universal access across administrative and student inspection endpoints
+        if ($user->role === 'SUPER_ADMIN' || in_array($user->role, $roles)) {
+            return $next($request);
+        }
+
+        return response()->json(['detail' => 'Forbidden'], 403);
     }
 }

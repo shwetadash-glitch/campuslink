@@ -44,24 +44,31 @@ class AssessmentController extends Controller
      */
     public function index(Request $request)
     {
-        $query = Assessment::with(['drive', 'job.company', 'creator'])
+        $query = Assessment::with(['drive', 'job.company', 'creator', 'questions'])
             ->withCount('questions');
 
-        if ($request->has('status')) {
+        if ($request->has('status') && $request->query('status') !== 'ALL') {
             $query->where('status', $request->query('status'));
         }
         if ($request->has('drive_id')) {
             $query->where('drive_id', $request->query('drive_id'));
         }
 
+        if ($request->boolean('all') || $request->query('all') === 'true' || $request->query('all') === '1') {
+            return response()->json([
+                'status' => 'success',
+                'assessments' => $query->orderBy('id', 'desc')->get(),
+            ]);
+        }
+
         return response()->json([
             'status' => 'success',
-            'assessments' => $query->orderBy('id', 'desc')->paginate(20),
+            'assessments' => $query->orderBy('id', 'desc')->paginate($request->query('per_page', 20)),
         ]);
     }
 
     /**
-     * Create a new assessment.
+     * Create a new assessment (Admin or Officer).
      */
     public function store(Request $request)
     {
@@ -79,20 +86,76 @@ class AssessmentController extends Controller
             'is_randomized' => 'nullable|boolean',
             'negative_marking_rate' => 'nullable|numeric|min:0|max:1',
             'instructions' => 'nullable|string',
+            'status' => 'nullable|string|in:DRAFT,PENDING_VERIFICATION,PUBLISHED,REJECTED',
+            'questions' => 'nullable|array',
+            'questions.*.title' => 'required_with:questions|string|max:255',
+            'questions.*.question_text' => 'required_with:questions|string',
+            'questions.*.type' => 'nullable|string|in:MCQ,DESCRIPTIVE,PROGRAMMING,APTITUDE',
+            'questions.*.difficulty' => 'nullable|string|in:EASY,MEDIUM,HARD',
+            'questions.*.category' => 'nullable|string',
+            'questions.*.options' => 'nullable|array',
+            'questions.*.correct_answer' => 'nullable|string',
+            'questions.*.marks' => 'nullable|numeric|min:0.5',
+            'questions.*.negative_marks' => 'nullable|numeric|min:0',
+            'questions.*.explanation' => 'nullable|string',
         ]);
 
+        $status = $validated['status'] ?? 'PENDING_VERIFICATION';
+
         $assessment = Assessment::create([
-            ...$validated,
-            'created_by_user_id' => $request->user()->id,
-            'status' => 'DRAFT',
+            'title' => $validated['title'],
+            'code' => $validated['code'],
+            'description' => $validated['description'] ?? null,
+            'drive_id' => $validated['drive_id'] ?? null,
+            'job_id' => $validated['job_id'] ?? null,
+            'assessment_type' => $validated['assessment_type'],
+            'duration_minutes' => $validated['duration_minutes'],
+            'total_marks' => $validated['total_marks'],
+            'pass_percentage' => $validated['pass_percentage'],
             'max_attempts' => $validated['max_attempts'] ?? 1,
             'is_randomized' => $validated['is_randomized'] ?? false,
+            'negative_marking_rate' => $validated['negative_marking_rate'] ?? 0.0,
+            'instructions' => $validated['instructions'] ?? null,
+            'created_by_user_id' => $request->user()->id,
+            'status' => $status,
+            'metadata' => [
+                'created_by_role' => $request->user()->role,
+                'creator_name' => $request->user()->name,
+                'created_at' => Carbon::now()->toIso8601String(),
+            ],
         ]);
+
+        // Attach inline questions if provided by admin
+        if (!empty($validated['questions']) && is_array($validated['questions'])) {
+            foreach ($validated['questions'] as $idx => $qData) {
+                $question = Question::create([
+                    'title' => $qData['title'],
+                    'question_text' => $qData['question_text'],
+                    'type' => $qData['type'] ?? 'MCQ',
+                    'difficulty' => $qData['difficulty'] ?? 'MEDIUM',
+                    'category' => $qData['category'] ?? $validated['assessment_type'],
+                    'options' => $qData['options'] ?? null,
+                    'correct_answer' => $qData['correct_answer'] ?? null,
+                    'marks' => $qData['marks'] ?? 5.0,
+                    'negative_marks' => $qData['negative_marks'] ?? 0.0,
+                    'explanation' => $qData['explanation'] ?? null,
+                    'ai_review_status' => 'APPROVED',
+                ]);
+
+                $assessment->questions()->attach($question->id, [
+                    'order_index' => $idx + 1,
+                    'marks' => $question->marks,
+                    'negative_marks' => $question->negative_marks,
+                ]);
+            }
+        }
 
         return response()->json([
             'status' => 'success',
-            'message' => 'Assessment created successfully.',
-            'assessment' => $assessment,
+            'message' => $status === 'PENDING_VERIFICATION'
+                ? 'Assessment created and submitted for TPO verification.'
+                : 'Assessment created successfully.',
+            'assessment' => $assessment->load(['questions', 'creator']),
         ], 201);
     }
 
@@ -126,7 +189,7 @@ class AssessmentController extends Controller
             'max_attempts' => 'sometimes|integer|min:1',
             'is_randomized' => 'sometimes|boolean',
             'instructions' => 'nullable|string',
-            'status' => 'sometimes|string|in:DRAFT,PUBLISHED,ARCHIVED',
+            'status' => 'sometimes|string|in:DRAFT,PENDING_VERIFICATION,PUBLISHED,REJECTED,ARCHIVED',
         ]);
 
         $assessment->update($validated);
@@ -138,23 +201,138 @@ class AssessmentController extends Controller
         return response()->json([
             'status' => 'success',
             'message' => 'Assessment updated successfully.',
-            'assessment' => $assessment,
+            'assessment' => $assessment->load(['questions', 'creator']),
         ]);
     }
 
     /**
-     * Publish assessment.
+     * TPO Verification: Review, verify, and publish assessment for students.
      */
-    public function publish(Request $request, $id)
+    public function verify(Request $request, $id)
     {
-        $assessment = Assessment::findOrFail($id);
-        $assessment->publish();
+        $assessment = Assessment::with(['questions', 'creator'])->findOrFail($id);
+
+        $verifierName = $request->user()->name ?? (
+            $request->user()->role === 'PLACEMENT_OFFICER'
+                ? 'Placement Officer (' . $request->user()->email . ')'
+                : 'Admin (' . $request->user()->email . ')'
+        );
+
+        $metadata = $assessment->metadata ?? [];
+        $metadata['verification'] = [
+            'verified_by_user_id' => $request->user()->id,
+            'verified_by_name' => $verifierName,
+            'verified_by_role' => $request->user()->role,
+            'verified_at' => Carbon::now()->toIso8601String(),
+            'notes' => $request->input('notes', 'Verified and approved for campus placement drives by Placement Officer.'),
+        ];
+
+        // Clear any previous rejection flags
+        unset($metadata['rejection']);
+
+        $assessment->update([
+            'status' => 'PUBLISHED',
+            'published_at' => Carbon::now(),
+            'metadata' => $metadata,
+        ]);
 
         return response()->json([
             'status' => 'success',
-            'message' => 'Assessment published successfully for candidates.',
-            'assessment' => $assessment,
+            'message' => 'Assessment verified and published successfully. Candidates can now view and attempt this examination.',
+            'assessment' => $assessment->fresh(['questions', 'creator']),
         ]);
+    }
+
+    /**
+     * TPO Rejection: Flag assessment with feedback for revisions.
+     */
+    public function reject(Request $request, $id)
+    {
+        $assessment = Assessment::with(['questions', 'creator'])->findOrFail($id);
+
+        $validated = $request->validate([
+            'reason' => 'required|string|min:3|max:500',
+        ]);
+
+        $rejectorName = $request->user()->name ?? (
+            $request->user()->role === 'PLACEMENT_OFFICER'
+                ? 'Placement Officer (' . $request->user()->email . ')'
+                : 'Admin (' . $request->user()->email . ')'
+        );
+
+        $metadata = $assessment->metadata ?? [];
+        $metadata['rejection'] = [
+            'rejected_by_user_id' => $request->user()->id,
+            'rejected_by_name' => $rejectorName,
+            'rejected_by_role' => $request->user()->role,
+            'rejected_at' => Carbon::now()->toIso8601String(),
+            'reason' => $validated['reason'],
+        ];
+
+        $assessment->update([
+            'status' => 'REJECTED',
+            'metadata' => $metadata,
+        ]);
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Assessment flagged and returned for revisions.',
+            'assessment' => $assessment->fresh(['questions', 'creator']),
+        ]);
+    }
+
+    /**
+     * Admin Submit for Verification: Resubmit draft/rejected assessment to TPO.
+     */
+    public function submitForVerification(Request $request, $id)
+    {
+        $assessment = Assessment::findOrFail($id);
+
+        $metadata = $assessment->metadata ?? [];
+        $metadata['submitted_for_review_at'] = Carbon::now()->toIso8601String();
+        $metadata['submitted_by'] = $request->user()->name;
+
+        $assessment->update([
+            'status' => 'PENDING_VERIFICATION',
+            'metadata' => $metadata,
+        ]);
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Assessment submitted to Placement Officer for verification.',
+            'assessment' => $assessment->fresh(['questions', 'creator']),
+        ]);
+    }
+
+    /**
+     * Delete assessment (Admin/Officer).
+     */
+    public function destroy(Request $request, $id)
+    {
+        $assessment = Assessment::findOrFail($id);
+
+        // Check if any sessions exist
+        if ($assessment->sessions()->count() > 0) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Cannot delete assessment: candidate examination sessions already exist.',
+            ], 422);
+        }
+
+        $assessment->delete();
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Assessment removed successfully.',
+        ]);
+    }
+
+    /**
+     * Publish assessment (legacy shortcut).
+     */
+    public function publish(Request $request, $id)
+    {
+        return $this->verify($request, $id);
     }
 
     /**
@@ -336,18 +514,25 @@ class AssessmentController extends Controller
      */
     public function studentAssessments(Request $request)
     {
-        $student = $this->getStudent($request);
+        $student = $request->user()?->studentProfile;
+        if (!$student && in_array($request->user()?->role, ['SUPER_ADMIN', 'PLACEMENT_OFFICER'])) {
+            $student = Student::first();
+        }
 
-        // Published assessments
+        // Published assessments (ONLY VERIFIED & PUBLISHED)
         $assessments = Assessment::where('status', 'PUBLISHED')
+            ->whereNotNull('published_at')
             ->with(['drive', 'job.company'])
             ->withCount('questions')
+            ->orderBy('id', 'desc')
             ->get()
             ->map(function ($a) use ($student) {
                 // Check past sessions for student
-                $pastAttempts = AssessmentSession::where('assessment_id', $a->id)
-                    ->where('student_id', $student->id)
-                    ->get();
+                $pastAttempts = $student
+                    ? AssessmentSession::where('assessment_id', $a->id)
+                        ->where('student_id', $student->id)
+                        ->get()
+                    : collect();
 
                 $activeSession = $pastAttempts->firstWhere('status', 'IN_PROGRESS');
                 $lastEvaluated = $pastAttempts->whereIn('status', ['EVALUATED', 'SUBMITTED'])->last();
@@ -357,13 +542,18 @@ class AssessmentController extends Controller
                     'title' => $a->title,
                     'code' => $a->code,
                     'description' => $a->description,
+                    'assessment_type' => $a->assessment_type,
                     'duration_minutes' => $a->duration_minutes,
                     'total_marks' => $a->total_marks,
                     'pass_percentage' => $a->pass_percentage,
                     'max_attempts' => $a->max_attempts,
+                    'questions_count' => $a->questions_count,
+                    'verified_by' => $a->metadata['verification']['verified_by_name'] ?? 'Placement Officer',
+                    'verified_at' => $a->metadata['verification']['verified_at'] ?? $a->published_at?->toIso8601String(),
                     'attempts_used' => $pastAttempts->count(),
-                    'can_attempt' => ($pastAttempts->count() < $a->max_attempts) || ($activeSession !== null),
+                    'can_attempt' => $student ? (($pastAttempts->count() < $a->max_attempts) || ($activeSession !== null)) : true,
                     'active_session_id' => $activeSession?->id,
+                    'last_session_id' => $lastEvaluated?->id,
                     'last_score' => $lastEvaluated?->total_score,
                     'last_passed' => $lastEvaluated?->passed,
                     'drive_title' => $a->drive?->name,
@@ -578,6 +768,15 @@ class AssessmentController extends Controller
             ], 400);
         }
 
+        // If session was submitted but not evaluated, or lacks improvement roadmap, evaluate it
+        $summary = $session->evaluation_summary;
+        if (empty($summary) || empty($summary['improvement_roadmap'])) {
+            $session = $this->scoringService->evaluateSession($session);
+            $summary = $session->evaluation_summary;
+        }
+
+        $roadmap = $summary['improvement_roadmap'] ?? null;
+
         return response()->json([
             'status' => 'success',
             'result' => [
@@ -590,7 +789,8 @@ class AssessmentController extends Controller
                 'pass_percentage' => $session->assessment->pass_percentage,
                 'submitted_at' => $session->submitted_at?->toIso8601String(),
                 'proctoring_flags_count' => $session->proctoring_flags_count,
-                'evaluation_summary' => $session->evaluation_summary,
+                'evaluation_summary' => $summary,
+                'improvement_roadmap' => $roadmap,
             ],
         ]);
     }
@@ -603,6 +803,13 @@ class AssessmentController extends Controller
     {
         $student = $request->user()?->studentProfile;
         if (!$student) {
+            // If super admin or officer is testing/inspecting the student assessment workflow:
+            if (in_array($request->user()?->role, ['SUPER_ADMIN', 'PLACEMENT_OFFICER'])) {
+                $firstStudent = Student::first();
+                if ($firstStudent) {
+                    return $firstStudent;
+                }
+            }
             abort(404, 'Student profile not found for this user account.');
         }
         return $student;

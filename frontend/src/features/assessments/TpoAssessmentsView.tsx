@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import {
   assessmentsApi,
   OfficerAssessmentItem,
+  AssessmentSubmissionItem,
 } from "@/services/assessmentsApi";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
@@ -23,6 +24,11 @@ export const TpoAssessmentsView: React.FC = () => {
   const [isRejecting, setIsRejecting] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
   const [actionSuccessMessage, setActionSuccessMessage] = useState<string | null>(null);
+
+  // Candidate Submissions & Proctoring Telemetry Modal State
+  const [submissionsModalAssessment, setSubmissionsModalAssessment] = useState<OfficerAssessmentItem | null>(null);
+  const [submissionsList, setSubmissionsList] = useState<AssessmentSubmissionItem[]>([]);
+  const [submissionsLoading, setSubmissionsLoading] = useState<boolean>(false);
 
   const fetchAssessments = async () => {
     setLoading(true);
@@ -87,6 +93,19 @@ export const TpoAssessmentsView: React.FC = () => {
       alert(err?.message || "Failed to flag assessment.");
     } finally {
       setActionLoading(false);
+    }
+  };
+
+  const handleOpenSubmissions = async (assessment: OfficerAssessmentItem) => {
+    setSubmissionsModalAssessment(assessment);
+    setSubmissionsLoading(true);
+    try {
+      const data = await assessmentsApi.getAssessmentSubmissions(assessment.id);
+      setSubmissionsList(data.sessions);
+    } catch (err: any) {
+      alert(err?.message || "Failed to load candidate submissions.");
+    } finally {
+      setSubmissionsLoading(false);
     }
   };
 
@@ -317,25 +336,36 @@ export const TpoAssessmentsView: React.FC = () => {
                     </td>
 
                     <td className="py-3.5 px-4 text-right">
-                      {a.status === "PENDING_VERIFICATION" ? (
-                        <Button
-                          variant="primary"
-                          size="sm"
-                          className="bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs shadow-xs"
-                          onClick={() => handleOpenReview(a)}
-                        >
-                          Review &amp; Verify
-                        </Button>
-                      ) : (
+                      <div className="flex items-center justify-end gap-2">
                         <Button
                           variant="outline"
                           size="sm"
-                          className="text-2xs"
-                          onClick={() => handleOpenReview(a)}
+                          className="text-2xs text-campusblue-800 border-campusblue-200 hover:bg-campusblue-50 font-bold"
+                          onClick={() => handleOpenSubmissions(a)}
                         >
-                          Audit Details
+                          <span>📊</span>
+                          <span>Scores &amp; Tabs</span>
                         </Button>
-                      )}
+                        {a.status === "PENDING_VERIFICATION" ? (
+                          <Button
+                            variant="primary"
+                            size="sm"
+                            className="bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs shadow-xs"
+                            onClick={() => handleOpenReview(a)}
+                          >
+                            Review &amp; Verify
+                          </Button>
+                        ) : (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="text-2xs"
+                            onClick={() => handleOpenReview(a)}
+                          >
+                            Audit Details
+                          </Button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -568,6 +598,158 @@ export const TpoAssessmentsView: React.FC = () => {
                 )}
               </div>
             )}
+          </div>
+        </Modal>
+      )}
+
+      {/* TPO SUBMISSIONS & TAB MONITORING AUDIT MODAL */}
+      {submissionsModalAssessment && (
+        <Modal
+          isOpen={!!submissionsModalAssessment}
+          onClose={() => setSubmissionsModalAssessment(null)}
+          title={`Candidate Submissions & Integrity Audit: ${submissionsModalAssessment.title}`}
+          subtitle={`Review candidate scores, pass/fail status, and tab-switch proctoring logs for assessment code ${submissionsModalAssessment.code}.`}
+          size="4xl"
+        >
+          <div className="space-y-5 max-h-[75vh] overflow-y-auto px-1">
+            {/* KPI Summary Cards */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+              <div className="bg-campusblue-50/70 p-3.5 rounded-xl border border-campusblue-100">
+                <span className="text-2xs font-bold uppercase text-campusblue-500 block">Total Submissions</span>
+                <span className="text-2xl font-black text-campusblue-900 mt-1">{submissionsList.length}</span>
+                <span className="text-3xs text-campusblue-500 block mt-0.5">Attempted candidates</span>
+              </div>
+              <div className="bg-emerald-50/70 p-3.5 rounded-xl border border-emerald-200">
+                <span className="text-2xs font-bold uppercase text-emerald-700 block">Passed Cutoff</span>
+                <span className="text-2xl font-black text-emerald-900 mt-1">
+                  {submissionsList.filter((s) => s.passed && !s.is_disqualified && (s.tab_switches ?? 0) <= 3).length}
+                </span>
+                <span className="text-3xs text-emerald-600 block mt-0.5">&ge; {submissionsModalAssessment.pass_percentage}% threshold</span>
+              </div>
+              <div className="bg-amber-50/70 p-3.5 rounded-xl border border-amber-200">
+                <span className="text-2xs font-bold uppercase text-amber-700 block">Below Cutoff</span>
+                <span className="text-2xl font-black text-amber-900 mt-1">
+                  {submissionsList.filter((s) => !s.passed && !s.is_disqualified && (s.tab_switches ?? 0) <= 3).length}
+                </span>
+                <span className="text-3xs text-amber-600 block mt-0.5">&lt; {submissionsModalAssessment.pass_percentage}% threshold</span>
+              </div>
+              <div className="bg-rose-50/70 p-3.5 rounded-xl border-2 border-rose-300">
+                <span className="text-2xs font-bold uppercase text-rose-800 block">Disqualified (&gt;3 Tabs)</span>
+                <span className="text-2xl font-black text-rose-900 mt-1">
+                  {submissionsList.filter((s) => s.is_disqualified || (s.tab_switches ?? 0) > 3).length}
+                </span>
+                <span className="text-3xs text-rose-700 block mt-0.5 font-semibold">Marked 0 automatically</span>
+              </div>
+            </div>
+
+            {/* Submissions List */}
+            {submissionsLoading ? (
+              <div className="text-center py-12 text-xs text-campusblue-500 animate-pulse bg-white rounded-xl border border-campusblue-100">
+                Loading candidate scores and proctoring telemetry...
+              </div>
+            ) : submissionsList.length === 0 ? (
+              <div className="text-center py-12 bg-campusblue-50/30 rounded-xl border border-campusblue-100 p-6 space-y-2">
+                <div className="text-3xl">📋</div>
+                <h4 className="text-sm font-bold text-campusblue-900">No candidate submissions recorded yet</h4>
+                <p className="text-xs text-campusblue-600 max-w-md mx-auto">
+                  When students complete this examination, their final scores, completion timestamps, and live tab-switch counts will appear here.
+                </p>
+              </div>
+            ) : (
+              <div className="border border-campusblue-200 rounded-xl overflow-hidden shadow-xs bg-white">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-campusblue-50/80 text-campusblue-800 uppercase tracking-wider text-2xs font-bold border-b border-campusblue-100">
+                      <tr>
+                        <th className="py-3 px-4">Candidate Information</th>
+                        <th className="py-3 px-4">Score Awarded</th>
+                        <th className="py-3 px-4">Result / Status</th>
+                        <th className="py-3 px-4">Monitored Tab Switches</th>
+                        <th className="py-3 px-4 text-right">Submitted At</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-campusblue-50">
+                      {submissionsList.map((sub) => {
+                        const isDisq = sub.is_disqualified || (sub.tab_switches ?? 0) > 3;
+                        return (
+                          <tr key={sub.id} className={isDisq ? "bg-rose-50/50 hover:bg-rose-50/80" : "hover:bg-campusblue-50/30 transition-colors"}>
+                            <td className="py-3.5 px-4">
+                              <div className="font-bold text-campusblue-900 text-xs">
+                                {sub.student?.user?.name || "Student Candidate"}
+                              </div>
+                              <div className="text-2xs text-campusblue-500 font-mono mt-0.5">
+                                {sub.student?.roll_number ? `${sub.student.roll_number} • ` : ""}
+                                {sub.student?.branch ? `${sub.student.branch} • ` : ""}
+                                {sub.student?.user?.email || `Session #${sub.id}`}
+                              </div>
+                            </td>
+                            <td className="py-3.5 px-4">
+                              <div className="font-black text-sm">
+                                {isDisq ? (
+                                  <span className="text-rose-700 font-black">0 pts (Disqualified)</span>
+                                ) : sub.total_score !== null ? (
+                                  <span className="text-campusblue-900">{sub.total_score} / {submissionsModalAssessment.total_marks} pts</span>
+                                ) : (
+                                  <span className="text-gray-400">In Progress</span>
+                                )}
+                              </div>
+                              <div className="text-3xs text-campusblue-500 mt-0.5">
+                                Attempt #{sub.attempt_number}
+                              </div>
+                            </td>
+                            <td className="py-3.5 px-4">
+                              {isDisq ? (
+                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-2xs font-extrabold bg-rose-100 text-rose-800 border border-rose-300">
+                                  🚨 Disqualified (Score: 0)
+                                </span>
+                              ) : sub.passed ? (
+                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-2xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                                  ✓ Cleared Cutoff
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-2xs font-semibold bg-gray-100 text-gray-700 border border-gray-200">
+                                  Did Not Clear
+                                </span>
+                              )}
+                            </td>
+                            <td className="py-3.5 px-4">
+                              {isDisq ? (
+                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-2xs font-extrabold bg-rose-200 text-rose-950 border border-rose-400 animate-pulse">
+                                  <span>🚨</span>
+                                  <span>{sub.tab_switches ?? ">3"} Switches (Exceeded Limit)</span>
+                                </span>
+                              ) : (sub.tab_switches ?? 0) > 0 ? (
+                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-2xs font-bold bg-amber-100 text-amber-900 border border-amber-300">
+                                  <span>⚠️</span>
+                                  <span>{sub.tab_switches} / 3 Switches</span>
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-2xs font-medium bg-emerald-50 text-emerald-800 border border-emerald-200">
+                                  <span>✓</span>
+                                  <span>0 Switches (Clean)</span>
+                                </span>
+                              )}
+                            </td>
+                            <td className="py-3.5 px-4 text-right text-2xs text-campusblue-600 font-medium">
+                              {sub.submitted_at ? new Date(sub.submitted_at).toLocaleString() : sub.status}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="mt-5 pt-3 border-t border-campusblue-100 flex items-center justify-between">
+            <span className="text-2xs text-campusblue-500">
+              Exam security rule: Tab switches &gt; 3 automatically set student score to 0.
+            </span>
+            <Button variant="outline" size="sm" onClick={() => setSubmissionsModalAssessment(null)}>
+              Close Audit
+            </Button>
           </div>
         </Modal>
       )}

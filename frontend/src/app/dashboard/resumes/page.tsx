@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState, useCallback } from "react";
+import Link from "next/link";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
@@ -12,8 +13,9 @@ import { LoadingState } from "@/components/feedback/LoadingState";
 import { ErrorState } from "@/components/feedback/ErrorState";
 import { EmptyState } from "@/components/feedback/EmptyState";
 import { Toast } from "@/components/feedback/Toast";
+import { ResumePaperSheet } from "@/features/resumes/ResumePaperSheet";
 import { resumeApi, ResumeItem, ResumeVersionItem } from "@/services/resumeApi";
-import { parseApiError } from "@/services/apiClient";
+import { parseApiError, apiClient } from "@/services/apiClient";
 
 export default function ResumeBuilderPage() {
   const [resumes, setResumes] = useState<ResumeItem[]>([]);
@@ -30,6 +32,7 @@ export default function ResumeBuilderPage() {
   // AI helper states
   const [generatingSummary, setGeneratingSummary] = useState(false);
   const [improvingProjectIdx, setImprovingProjectIdx] = useState<number | null>(null);
+  const [improvingExpIdx, setImprovingExpIdx] = useState<number | null>(null);
 
   // Job analysis state
   const [jobDescriptionInput, setJobDescriptionInput] = useState("");
@@ -44,6 +47,7 @@ export default function ResumeBuilderPage() {
   const [showVersionModal, setShowVersionModal] = useState(false);
   const [versionSnapshotSummary, setVersionSnapshotSummary] = useState("");
   const [diffComparison, setDiffComparison] = useState<any | null>(null);
+  const [diffViewMode, setDiffViewMode] = useState<"paper" | "code">("paper");
 
   // New resume modal
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -54,6 +58,7 @@ export default function ResumeBuilderPage() {
 
   // Export state
   const [exportingPdf, setExportingPdf] = useState(false);
+  const [exportingDocx, setExportingDocx] = useState(false);
   const [approving, setApproving] = useState(false);
 
   const fetchResumes = useCallback(async () => {
@@ -181,6 +186,30 @@ export default function ResumeBuilderPage() {
     }
   };
 
+  // AI Experience Polish
+  const handleImproveExperience = async (index: number) => {
+    if (!selectedResume || !editingContent?.work_experience?.[index]) return;
+    setImprovingExpIdx(index);
+    const targetExp = editingContent.work_experience[index];
+    try {
+      const res = await resumeApi.improveExperience(selectedResume.id, targetExp);
+      setEditingContent((prev: any) => {
+        const updatedExp = [...prev.work_experience];
+        updatedExp[index] = {
+          ...updatedExp[index],
+          description: res.enhanced_description,
+          highlights: res.bullet_points,
+        };
+        return { ...prev, work_experience: updatedExp };
+      });
+      setToastMessage(`Experience at '${targetExp.company}' polished with ATR bullet points!`);
+    } catch (err: any) {
+      alert(parseApiError(err).message);
+    } finally {
+      setImprovingExpIdx(null);
+    }
+  };
+
   // Job Description Analysis
   const handleAnalyzeJobDescription = async () => {
     if (!selectedResume || !jobDescriptionInput.trim()) {
@@ -235,12 +264,26 @@ export default function ResumeBuilderPage() {
     try {
       const res = await resumeApi.exportPdf(selectedResume.id);
       setToastMessage("PDF compiled and verified! Starting download...");
-      window.open(res.download_url, "_blank");
+      await apiClient.download(res.download_url, `${selectedResume.title || "Resume"}.pdf`);
       setSelectedResume((prev) => (prev ? { ...prev, pdf_path: res.pdf_path, pdf_generated_at: res.generated_at } : null));
     } catch (err: any) {
       alert(parseApiError(err).message);
     } finally {
       setExportingPdf(false);
+    }
+  };
+
+  const handleExportDocx = async () => {
+    if (!selectedResume) return;
+    setExportingDocx(true);
+    try {
+      const res = await resumeApi.exportDocx(selectedResume.id);
+      setToastMessage("DOCX compiled and verified! Starting download...");
+      await apiClient.download(res.download_url, `${selectedResume.title || "Resume"}.docx`);
+    } catch (err: any) {
+      alert(parseApiError(err).message);
+    } finally {
+      setExportingDocx(false);
     }
   };
 
@@ -315,9 +358,17 @@ export default function ResumeBuilderPage() {
               ))}
             </div>
 
-            <Button size="sm" variant="primary" onClick={() => setShowCreateModal(true)}>
-              + Create Tailored Resume
-            </Button>
+            <div className="flex items-center gap-2">
+              <Link
+                href="/resume-builder"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white rounded-lg text-xs font-bold shadow-xs hover:shadow transition"
+              >
+                ✨ Launch Modern Resume Studio
+              </Link>
+              <Button size="sm" variant="primary" onClick={() => setShowCreateModal(true)}>
+                + Create Tailored Resume
+              </Button>
+            </div>
           </div>
 
           {selectedResume && editingContent ? (
@@ -452,6 +503,68 @@ export default function ResumeBuilderPage() {
                       </div>
                     </Card>
 
+                    {/* Work Experience */}
+                    <Card>
+                      <div className="flex items-center justify-between mb-3">
+                        <div>
+                          <h3 className="text-sm font-bold text-campusblue-900">Work Experience</h3>
+                          <p className="text-2xs text-campusblue-500">Professional internships, co-ops, and full-time engineering roles</p>
+                        </div>
+                      </div>
+
+                      <div className="space-y-4">
+                        {editingContent.work_experience && editingContent.work_experience.length > 0 ? (
+                          editingContent.work_experience.map((exp: any, idx: number) => (
+                            <div key={idx} className="p-4 rounded-xl border border-campusblue-100 bg-campusblue-50/20 space-y-3">
+                              <div className="flex items-center justify-between">
+                                <div>
+                                  <span className="text-xs font-black text-campusblue-900">{exp.job_title}</span>
+                                  {exp.company && (
+                                    <span className="text-2xs font-semibold text-campusblue-700 ml-2">@ {exp.company}</span>
+                                  )}
+                                  {exp.location && (
+                                    <span className="text-3xs text-campusblue-400 ml-2">({exp.location})</span>
+                                  )}
+                                </div>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  loading={improvingExpIdx === idx}
+                                  onClick={() => handleImproveExperience(idx)}
+                                >
+                                  🎯 AI Polish (ATR Formula)
+                                </Button>
+                              </div>
+
+                              <textarea
+                                value={exp.description || (Array.isArray(exp.highlights) ? exp.highlights.join("\n") : "")}
+                                onChange={(e) => {
+                                  const newExp = [...editingContent.work_experience];
+                                  newExp[idx] = { ...newExp[idx], description: e.target.value };
+                                  setEditingContent({ ...editingContent, work_experience: newExp });
+                                }}
+                                rows={3}
+                                placeholder="Describe your responsibilities and achievements..."
+                                className="w-full p-2.5 text-xs rounded-lg border border-campusblue-200 focus:ring-2 focus:ring-blue-500 text-campusblue-900"
+                              />
+
+                              {Array.isArray(exp.highlights) && exp.highlights.length > 0 && (
+                                <ul className="list-disc pl-4 space-y-1 text-2xs text-campusblue-700">
+                                  {exp.highlights.map((h: string, hIdx: number) => (
+                                    <li key={hIdx}>{h}</li>
+                                  ))}
+                                </ul>
+                              )}
+                            </div>
+                          ))
+                        ) : (
+                          <p className="text-xs text-campusblue-400 italic">
+                            No external work experience recorded (Fresher Candidate Profile). Focus will be placed on capstone projects and technical competencies.
+                          </p>
+                        )}
+                      </div>
+                    </Card>
+
                     {/* Projects */}
                     <Card>
                       <div className="flex items-center justify-between mb-3">
@@ -516,6 +629,25 @@ export default function ResumeBuilderPage() {
                         ))}
                       </div>
                     </Card>
+
+                    {/* Honors & Key Achievements */}
+                    {editingContent.achievements && editingContent.achievements.length > 0 && (
+                      <Card>
+                        <h3 className="text-sm font-bold text-campusblue-900 mb-2">Honors & Key Achievements</h3>
+                        <div className="space-y-2">
+                          {editingContent.achievements.map((ach: any, idx: number) => (
+                            <div key={idx} className="p-3 bg-amber-50/40 rounded-lg border border-amber-200/50 text-xs">
+                              <div className="flex items-center justify-between">
+                                <span className="font-bold text-slate-900">{ach.title || String(ach)}</span>
+                                {ach.date && <span className="text-3xs text-slate-500">{ach.date}</span>}
+                              </div>
+                              {ach.issuer && <div className="text-2xs text-slate-600 mt-0.5">Issuer: {ach.issuer}</div>}
+                              {ach.description && <div className="text-2xs text-slate-700 mt-1">{ach.description}</div>}
+                            </div>
+                          ))}
+                        </div>
+                      </Card>
+                    )}
                   </div>
                 )}
 
@@ -794,6 +926,17 @@ export default function ResumeBuilderPage() {
                       📄 Export & Download Verified PDF
                     </Button>
 
+                    <Button
+                      size="md"
+                      variant="outline"
+                      className="w-full text-xs"
+                      disabled={!selectedResume.approved_by_student_at}
+                      loading={exportingDocx}
+                      onClick={handleExportDocx}
+                    >
+                      📝 Export & Download Word (.docx)
+                    </Button>
+
                     {selectedResume.pdf_generated_at && (
                       <span className="text-3xs text-campusblue-400 block text-center">
                         Last generated: {new Date(selectedResume.pdf_generated_at).toLocaleString()}
@@ -946,21 +1089,78 @@ export default function ResumeBuilderPage() {
               onClose={() => setDiffComparison(null)}
               title="Resume Content vs Profile Baseline Comparison"
               subtitle="Review customized resume sections against verified student source-of-truth records."
-              size="2xl"
+              size="6xl"
             >
-              <div className="grid grid-cols-2 gap-4 text-xs max-h-96 overflow-y-auto">
-                <div className="p-3 bg-campusblue-50/50 rounded-lg">
-                  <span className="font-bold text-campusblue-900 block mb-2">{diffComparison.left.label}</span>
-                  <pre className="text-3xs text-campusblue-800 whitespace-pre-wrap font-mono">
-                    {JSON.stringify(diffComparison.left.content, null, 2)}
-                  </pre>
+              <div className="space-y-4">
+                {/* View Format Switcher & Helper */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-campusblue-100">
+                  <div className="flex items-center gap-2">
+                    <span className="text-2xs font-bold text-campusblue-500 uppercase tracking-wider">
+                      Format:
+                    </span>
+                    <div className="inline-flex rounded-lg border border-campusblue-200 p-0.5 bg-campusblue-50/60">
+                      <button
+                        type="button"
+                        onClick={() => setDiffViewMode("paper")}
+                        className={`px-3 py-1 rounded-md text-xs font-semibold transition ${
+                          diffViewMode === "paper"
+                            ? "bg-white text-campusblue-900 shadow-xs"
+                            : "text-campusblue-600 hover:text-campusblue-900"
+                        }`}
+                      >
+                        📄 Document / Paper View
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setDiffViewMode("code")}
+                        className={`px-3 py-1 rounded-md text-xs font-semibold transition ${
+                          diffViewMode === "code"
+                            ? "bg-white text-campusblue-900 shadow-xs"
+                            : "text-campusblue-600 hover:text-campusblue-900"
+                        }`}
+                      >
+                        💻 Raw Code (JSON)
+                      </button>
+                    </div>
+                  </div>
+
+                  <p className="text-3xs text-campusblue-400">
+                    Side-by-side verification: Compare tailored draft against verified institutional record
+                  </p>
                 </div>
-                <div className="p-3 bg-emerald-50/40 rounded-lg">
-                  <span className="font-bold text-emerald-900 block mb-2">{diffComparison.right.label}</span>
-                  <pre className="text-3xs text-emerald-800 whitespace-pre-wrap font-mono">
-                    {JSON.stringify(diffComparison.right.content, null, 2)}
-                  </pre>
-                </div>
+
+                {/* Content Render: Realistic Paper Sheets or Raw JSON */}
+                {diffViewMode === "paper" ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-h-[75vh] overflow-y-auto p-4 sm:p-6 bg-slate-100 rounded-xl">
+                    <ResumePaperSheet
+                      label={diffComparison.left.label}
+                      content={diffComparison.left.content}
+                      variant="primary"
+                      template={selectedResume?.template}
+                    />
+                    <ResumePaperSheet
+                      label={diffComparison.right.label}
+                      content={diffComparison.right.content}
+                      variant="baseline"
+                      template={selectedResume?.template}
+                    />
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs max-h-[75vh] overflow-y-auto">
+                    <div className="p-4 bg-campusblue-50/50 rounded-lg border border-campusblue-100">
+                      <span className="font-bold text-campusblue-900 block mb-2">{diffComparison.left.label}</span>
+                      <pre className="text-3xs text-campusblue-800 whitespace-pre-wrap font-mono">
+                        {JSON.stringify(diffComparison.left.content, null, 2)}
+                      </pre>
+                    </div>
+                    <div className="p-4 bg-emerald-50/40 rounded-lg border border-emerald-100">
+                      <span className="font-bold text-emerald-900 block mb-2">{diffComparison.right.label}</span>
+                      <pre className="text-3xs text-emerald-800 whitespace-pre-wrap font-mono">
+                        {JSON.stringify(diffComparison.right.content, null, 2)}
+                      </pre>
+                    </div>
+                  </div>
+                )}
               </div>
             </Modal>
           )}

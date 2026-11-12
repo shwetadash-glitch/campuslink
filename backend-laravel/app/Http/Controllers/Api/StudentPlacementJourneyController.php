@@ -731,10 +731,21 @@ class StudentPlacementJourneyController extends Controller
 
         $validated = $request->validate([
             'answers' => 'required|array',
+            'tab_switches' => 'nullable|integer|min:0',
+            'disqualified' => 'nullable|boolean',
         ]);
 
+        $tabSwitches = (int) ($validated['tab_switches'] ?? 0);
+        $disqualified = (bool) ($validated['disqualified'] ?? false);
+
         try {
-            $result = $this->roundsService->evaluateStudentQuiz($drive, $student, $validated['answers']);
+            $result = $this->roundsService->evaluateStudentQuiz(
+                $drive,
+                $student,
+                $validated['answers'],
+                $tabSwitches,
+                $disqualified
+            );
             return response()->json($result);
         } catch (\DomainException $e) {
             return response()->json(['message' => $e->getMessage()], 400);
@@ -756,7 +767,12 @@ class StudentPlacementJourneyController extends Controller
         }
 
         try {
-            $session = $this->roundsService->getGdSessionData($drive, $student);
+            $mode = $request->query('mode');
+            $peerIds = $request->filled('peer_ids')
+                ? array_map('intval', explode(',', $request->query('peer_ids')))
+                : null;
+
+            $session = $this->roundsService->getGdSessionData($drive, $student, $mode, $peerIds);
             return response()->json([
                 'status' => 'success',
                 'session' => $session,

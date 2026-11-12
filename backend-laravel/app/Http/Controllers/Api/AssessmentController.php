@@ -463,11 +463,17 @@ class AssessmentController extends Controller
         $sessions = AssessmentSession::with(['student.user'])
             ->where('assessment_id', $assessment->id)
             ->orderBy('id', 'desc')
-            ->paginate(25);
+            ->get();
 
         return response()->json([
             'status' => 'success',
-            'assessment_id' => $assessment->id,
+            'assessment' => [
+                'id' => $assessment->id,
+                'title' => $assessment->title,
+                'code' => $assessment->code,
+                'total_marks' => $assessment->total_marks,
+                'pass_percentage' => $assessment->pass_percentage,
+            ],
             'sessions' => $sessions,
         ]);
     }
@@ -707,6 +713,18 @@ class AssessmentController extends Controller
             ->where('student_id', $student->id)
             ->firstOrFail();
 
+        if ($request->has('tab_switches')) {
+            $switches = (int) $request->input('tab_switches');
+            $isDisq = $session->is_disqualified || ($switches > 3) || $request->boolean('disqualified');
+            $session->update([
+                'tab_switches' => max((int) ($session->tab_switches ?? 0), $switches),
+                'is_disqualified' => $isDisq,
+                'disqualification_reason' => $isDisq
+                    ? "Disqualified: Exceeded maximum allowed tab switches ({$switches} switches detected, maximum allowed is 3). Total score set to 0."
+                    : $session->disqualification_reason,
+            ]);
+        }
+
         $evaluatedSession = $this->sessionService->submitSession($session, false);
 
         return response()->json([
@@ -717,7 +735,10 @@ class AssessmentController extends Controller
                 'status' => $evaluatedSession->status,
                 'total_score' => $evaluatedSession->total_score,
                 'passed' => $evaluatedSession->passed,
-                'submitted_at' => $evaluatedSession->submitted_at->toIso8601String(),
+                'tab_switches' => (int) ($evaluatedSession->tab_switches ?? 0),
+                'is_disqualified' => (bool) $evaluatedSession->is_disqualified,
+                'disqualification_reason' => $evaluatedSession->disqualification_reason,
+                'submitted_at' => $evaluatedSession->submitted_at?->toIso8601String(),
             ],
         ]);
     }
@@ -789,6 +810,9 @@ class AssessmentController extends Controller
                 'pass_percentage' => $session->assessment->pass_percentage,
                 'submitted_at' => $session->submitted_at?->toIso8601String(),
                 'proctoring_flags_count' => $session->proctoring_flags_count,
+                'tab_switches' => (int) ($session->tab_switches ?? 0),
+                'is_disqualified' => (bool) $session->is_disqualified,
+                'disqualification_reason' => $session->disqualification_reason,
                 'evaluation_summary' => $summary,
                 'improvement_roadmap' => $roadmap,
             ],

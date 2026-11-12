@@ -20,6 +20,8 @@ class AssessmentSession extends Model
         'total_score' => 'float',
         'passed' => 'boolean',
         'proctoring_flags_count' => 'integer',
+        'tab_switches' => 'integer',
+        'is_disqualified' => 'boolean',
         'question_order' => 'array',
         'evaluation_summary' => 'array',
     ];
@@ -83,6 +85,21 @@ class AssessmentSession extends Model
         $isSuspicious = in_array($eventType, ['WINDOW_BLUR', 'FULLSCREEN_EXIT', 'TAB_SWITCH', 'PASTE_DETECTED']);
         if ($isSuspicious) {
             $this->increment('proctoring_flags_count');
+        }
+
+        if (in_array($eventType, ['TAB_SWITCH', 'WINDOW_BLUR'])) {
+            $currentSwitches = $this->tab_switches + 1;
+            if (isset($data['tab_switches']) && is_numeric($data['tab_switches'])) {
+                $currentSwitches = max($currentSwitches, (int) $data['tab_switches']);
+            }
+            $isDisqualified = $this->is_disqualified || ($currentSwitches > 3);
+            $this->update([
+                'tab_switches' => $currentSwitches,
+                'is_disqualified' => $isDisqualified,
+                'disqualification_reason' => $isDisqualified
+                    ? "Disqualified: Exceeded maximum allowed tab switches ({$currentSwitches} switches detected, maximum allowed is 3). Total score set to 0."
+                    : $this->disqualification_reason,
+            ]);
         }
 
         return AssessmentSessionEvent::create([

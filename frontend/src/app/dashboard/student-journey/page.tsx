@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useRef } from "react";
 import Link from "next/link";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { PageHeader } from "@/components/layout/PageHeader";
@@ -52,6 +52,100 @@ export default function StudentPlacementJourneyPage() {
   const [quizTimeLeft, setQuizTimeLeft] = useState(45 * 60); // 45 minutes countdown
   const [quizResultModal, setQuizResultModal] = useState<any | null>(null);
 
+  // Technical Quiz Tab Switch & Integrity State
+  const [quizTabSwitches, setQuizTabSwitches] = useState<number>(0);
+  const [showQuizWarningModal, setShowQuizWarningModal] = useState<boolean>(false);
+  const [quizWarningModalData, setQuizWarningModalData] = useState<{ count: number; remaining: number; text: string }>({
+    count: 0,
+    remaining: 3,
+    text: "",
+  });
+  const [isQuizDisqualified, setIsQuizDisqualified] = useState<boolean>(false);
+
+  const quizTabSwitchesRef = useRef<number>(0);
+  const lastQuizSwitchTimeRef = useRef<number>(0);
+
+  const handleDisqualifyQuizAutoSubmit = async (finalCount: number) => {
+    if (!activeQuizApp) return;
+    setSubmittingQuiz(true);
+    try {
+      const res = await studentsApi.submitTechnicalQuiz(activeQuizApp.drive_id, selectedAnswers, finalCount, true);
+      setActiveQuizApp(null);
+      setQuizResultModal(res);
+      setToastMessage("Assessment disqualified and scored 0 due to exceeding 3 tab switches.");
+      await fetchJourneyData();
+    } catch {
+      setActiveQuizApp(null);
+      setQuizResultModal({
+        success: true,
+        status: "FAILED",
+        score: 0,
+        raw_score: 0,
+        is_disqualified: true,
+        tab_switches: finalCount,
+        disqualification_reason: `Disqualified: Exceeded maximum allowed tab switches (${finalCount} switches detected, maximum allowed is 3). Score marked as 0.`,
+        correct_answers: 0,
+        total_questions: quizQuestions.length || 12,
+        passing_cutoff: 60.0,
+        skill_breakdown: {},
+        message: `Assessment Disqualified: You switched tabs ${finalCount} times (maximum allowed is 3). Your score has been marked as 0.`,
+      });
+      await fetchJourneyData();
+    } finally {
+      setSubmittingQuiz(false);
+    }
+  };
+
+  // Tab Switch & Visibility Change Detection for Technical Quiz
+  useEffect(() => {
+    if (!activeQuizApp || isQuizDisqualified) return;
+
+    const handleQuizTabSwitchEvent = () => {
+      const now = Date.now();
+      // Throttle by 1.5s to prevent duplicate triggers from blur + visibilitychange
+      if (now - lastQuizSwitchTimeRef.current < 1500) return;
+      lastQuizSwitchTimeRef.current = now;
+
+      const newCount = quizTabSwitchesRef.current + 1;
+      quizTabSwitchesRef.current = newCount;
+      setQuizTabSwitches(newCount);
+
+      if (newCount > 3) {
+        setIsQuizDisqualified(true);
+        handleDisqualifyQuizAutoSubmit(newCount);
+      } else {
+        const remaining = 3 - newCount;
+        setQuizWarningModalData({
+          count: newCount,
+          remaining,
+          text:
+            newCount === 3
+              ? "🚨 FINAL WARNING (3 of 3): Tab switch detected! Any further tab switch will immediately disqualify you from this technical assessment and award a score of 0."
+              : `⚠️ Warning ${newCount} of 3: You navigated away from the assessment tab! Please remain on this tab. ${remaining} warning${remaining === 1 ? "" : "s"} remaining before automatic disqualification with 0 marks.`,
+        });
+        setShowQuizWarningModal(true);
+      }
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "hidden") {
+        handleQuizTabSwitchEvent();
+      }
+    };
+
+    const handleBlur = () => {
+      handleQuizTabSwitchEvent();
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    window.addEventListener("blur", handleBlur);
+
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener("blur", handleBlur);
+    };
+  }, [activeQuizApp, isQuizDisqualified]);
+
   // Countdown timer for active quiz
   useEffect(() => {
     if (!activeQuizApp) return;
@@ -79,6 +173,10 @@ export default function StudentPlacementJourneyPage() {
     setSelectedAnswers({});
     setCurrentQuestionIdx(0);
     setQuizTimeLeft(45 * 60);
+    setQuizTabSwitches(0);
+    quizTabSwitchesRef.current = 0;
+    setIsQuizDisqualified(false);
+    setShowQuizWarningModal(false);
     try {
       const data = await studentsApi.getTechnicalQuiz(app.drive_id);
       setQuizMeta(data);
@@ -107,7 +205,13 @@ export default function StudentPlacementJourneyPage() {
 
     setSubmittingQuiz(true);
     try {
-      const res = await studentsApi.submitTechnicalQuiz(activeQuizApp.drive_id, selectedAnswers);
+      const finalCount = quizTabSwitchesRef.current;
+      const res = await studentsApi.submitTechnicalQuiz(
+        activeQuizApp.drive_id,
+        selectedAnswers,
+        finalCount,
+        finalCount > 3
+      );
       setActiveQuizApp(null);
       setQuizResultModal(res);
       setToastMessage(res.message || "Technical assessment successfully submitted and recorded!");
@@ -1356,15 +1460,64 @@ export default function StudentPlacementJourneyPage() {
                     </span>
                   </div>
 
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-slate-400">Time Remaining:</span>
-                    <span className={`px-2.5 py-1 rounded-lg text-xs font-mono font-bold ${
-                      quizTimeLeft < 300 ? "bg-rose-500 text-white animate-pulse" : "bg-blue-950 text-blue-300 border border-blue-800"
-                    }`}>
-                      ⏱️ {formatTimer(quizTimeLeft)}
-                    </span>
+                  <div className="flex items-center gap-3 flex-wrap">
+                    {/* Tab Switches Proctoring Badge */}
+                    <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold bg-amber-950/80 border border-amber-600/60 text-amber-300">
+                      <span>🛡️ Tab Switches:</span>
+                      <span className={quizTabSwitches > 0 ? (quizTabSwitches >= 3 ? "text-rose-400 font-black" : "text-amber-200") : "text-emerald-400 font-bold"}>
+                        {quizTabSwitches} / 3 allowed
+                      </span>
+                      {quizTabSwitches > 0 && quizTabSwitches <= 3 && (
+                        <span className="text-3xs px-1.5 py-0.2 rounded bg-amber-800 text-amber-100 font-bold">
+                          {3 - quizTabSwitches} left
+                        </span>
+                      )}
+                      {quizTabSwitches > 3 && (
+                        <span className="text-3xs px-1.5 py-0.2 rounded bg-rose-600 text-white font-extrabold animate-pulse">
+                          DISQUALIFIED
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-slate-400">Time Remaining:</span>
+                      <span className={`px-2.5 py-1 rounded-lg text-xs font-mono font-bold ${
+                        quizTimeLeft < 300 ? "bg-rose-500 text-white animate-pulse" : "bg-blue-950 text-blue-300 border border-blue-800"
+                      }`}>
+                        ⏱️ {formatTimer(quizTimeLeft)}
+                      </span>
+                    </div>
                   </div>
                 </div>
+
+                {/* Real-time Tab Switch Alert Banner */}
+                {quizTabSwitches > 0 && (
+                  <div
+                    className={`p-3 rounded-xl border text-xs flex items-center justify-between gap-3 ${
+                      quizTabSwitches > 3
+                        ? "bg-rose-50 border-rose-300 text-rose-900"
+                        : quizTabSwitches === 3
+                        ? "bg-rose-50 border-rose-300 text-rose-900 font-bold"
+                        : "bg-amber-50 border-amber-300 text-amber-900"
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="text-base">{quizTabSwitches >= 3 ? "🚨" : "⚠️"}</span>
+                      <div>
+                        <span className="font-bold">Integrity Proctor Alert: </span>
+                        <span>
+                          You have changed tabs <strong>{quizTabSwitches} time(s)</strong>.
+                          {quizTabSwitches < 3 && ` You have ${3 - quizTabSwitches} warning(s) remaining.`}
+                          {quizTabSwitches === 3 && " FINAL WARNING. Next tab switch results in automatic disqualification with 0 score."}
+                          {quizTabSwitches > 3 && " Exceeded 3 tab switches. Score marked as 0."}
+                        </span>
+                      </div>
+                    </div>
+                    <span className="text-2xs uppercase tracking-wider font-extrabold px-2 py-0.5 rounded bg-white/80 border border-current shrink-0">
+                      Limit: 3 Max
+                    </span>
+                  </div>
+                )}
 
                 {/* Current Question */}
                 {quizQuestions[currentQuestionIdx] && (() => {
@@ -1504,28 +1657,76 @@ export default function StudentPlacementJourneyPage() {
             subtitle="Synced with Placement Officer Shortlisting Console"
             size="lg"
           >
-            {quizResultModal && (
+            {quizResultModal && (() => {
+              const isDisq = !!(quizResultModal.is_disqualified || (quizResultModal.tab_switches ?? 0) > 3 || quizResultModal.status === "DISQUALIFIED");
+
+              return (
               <div className="space-y-5 text-center">
-                <div className="w-16 h-16 rounded-full mx-auto flex items-center justify-center text-3xl shadow-sm bg-gradient-to-tr from-blue-50 to-emerald-50 border border-emerald-200">
-                  {quizResultModal.status === "CLEARED" ? "🎉" : "📊"}
+                <div className={`w-16 h-16 rounded-full mx-auto flex items-center justify-center text-3xl shadow-sm border ${
+                  isDisq
+                    ? "bg-rose-50 border-rose-300 text-rose-600"
+                    : quizResultModal.status === "CLEARED"
+                    ? "bg-gradient-to-tr from-blue-50 to-emerald-50 border-emerald-200"
+                    : "bg-slate-50 border-slate-200"
+                }`}>
+                  {isDisq ? "🚨" : quizResultModal.status === "CLEARED" ? "🎉" : "📊"}
                 </div>
+
+                {/* Disqualification Banner */}
+                {isDisq && (
+                  <div className="p-4 rounded-xl bg-rose-50 border-2 border-rose-300 text-rose-950 text-left space-y-1.5 shadow-xs">
+                    <div className="flex items-center gap-2 font-black text-rose-800 text-sm">
+                      <span className="text-lg">🚨</span>
+                      <span>DISQUALIFIED: EXCEEDED TAB SWITCH LIMIT (&gt;3 SWITCHES)</span>
+                    </div>
+                    <p className="text-xs text-rose-900 leading-relaxed">
+                      {quizResultModal.disqualification_reason ||
+                        `You switched tabs ${quizResultModal.tab_switches || ">3"} times during this assessment. As per examination integrity rules, candidates with more than 3 tab changes are automatically disqualified and awarded a score of 0.`}
+                    </p>
+                    <div className="text-2xs font-extrabold text-rose-700">
+                      Tab Switches Logged: {quizResultModal.tab_switches ?? ">3"} • Final Score Awarded: 0% (Passing Cutoff: 60.0%)
+                    </div>
+                  </div>
+                )}
 
                 <div>
                   <span
                     className={`inline-block px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider mb-2 ${
-                      quizResultModal.status === "CLEARED"
+                      isDisq
+                        ? "bg-rose-100 text-rose-800 border border-rose-300"
+                        : quizResultModal.status === "CLEARED"
                         ? "bg-emerald-100 text-emerald-800 border border-emerald-300"
                         : "bg-rose-100 text-rose-800 border border-rose-300"
                     }`}
                   >
-                    {quizResultModal.status === "CLEARED" ? "QUALIFIED FOR ROUND 3 (GD)" : "CUTOFF NOT MET"}
+                    {isDisq
+                      ? "DISQUALIFIED (SCORE: 0)"
+                      : quizResultModal.status === "CLEARED"
+                      ? "QUALIFIED FOR ROUND 3 (GD)"
+                      : "CUTOFF NOT MET"}
                   </span>
-                  <h3 className="text-2xl font-black text-slate-900">
-                    {quizResultModal.score}% Score Earned
+                  <h3 className={`text-2xl font-black ${isDisq ? "text-rose-600" : "text-slate-900"}`}>
+                    {isDisq ? 0 : quizResultModal.score}% Score Earned
                   </h3>
                   <p className="text-xs text-slate-500 mt-1">
-                    {quizResultModal.correct_answers} of {quizResultModal.total_questions} questions answered correctly (Passing cutoff: 60.0%).
+                    {isDisq
+                      ? `0 of ${quizResultModal.total_questions} questions counted due to tab switch disqualification.`
+                      : `${quizResultModal.correct_answers} of ${quizResultModal.total_questions} questions answered correctly (Passing cutoff: 60.0%).`}
                   </p>
+
+                  {/* Proctoring Telemetry Pill */}
+                  <div className="mt-2.5 flex items-center justify-center gap-2">
+                    <span className="text-2xs text-slate-500 font-bold uppercase tracking-wider">Proctoring Telemetry:</span>
+                    <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-2xs font-black ${
+                      isDisq
+                        ? "bg-rose-100 text-rose-800 border border-rose-300"
+                        : (quizResultModal.tab_switches ?? 0) > 0
+                        ? "bg-amber-100 text-amber-800 border border-amber-300"
+                        : "bg-emerald-100 text-emerald-800 border border-emerald-300"
+                    }`}>
+                      🛡️ {quizResultModal.tab_switches ?? 0} Tab Switch{quizResultModal.tab_switches === 1 ? "" : "es"}
+                    </span>
+                  </div>
                 </div>
 
                 {/* Skill Breakdown */}
@@ -1568,8 +1769,43 @@ export default function StudentPlacementJourneyPage() {
                   </Button>
                 </div>
               </div>
-            )}
+              );
+            })()}
           </Modal>
+
+          {/* Technical Quiz Tab Switch Warning Modal */}
+          {showQuizWarningModal && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in duration-200">
+              <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border-2 border-amber-400 space-y-4 text-center">
+                <div className="w-14 h-14 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center mx-auto text-2xl font-black">
+                  ⚠️
+                </div>
+                <div>
+                  <span className="text-2xs font-extrabold uppercase tracking-widest px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-300">
+                    Proctoring Warning {quizWarningModalData.count} of 3
+                  </span>
+                  <h3 className="text-lg font-black text-slate-900 mt-2">
+                    Tab Switch Detected!
+                  </h3>
+                  <p className="text-xs text-slate-700 mt-2 leading-relaxed">
+                    {quizWarningModalData.text}
+                  </p>
+                </div>
+                <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-left text-2xs text-rose-800">
+                  <span className="font-bold block">Strict Proctoring Policy:</span>
+                  Navigating to other browser tabs, minimizing the browser, or losing window focus is strictly monitored. If you switch tabs more than <strong>3 times</strong>, your assessment will be immediately terminated, submitted, and scored <strong>0</strong>.
+                </div>
+                <Button
+                  variant="primary"
+                  size="sm"
+                  className="w-full bg-amber-600 hover:bg-amber-700 text-white font-bold py-2.5"
+                  onClick={() => setShowQuizWarningModal(false)}
+                >
+                  I Understand — Return to Quiz ({quizWarningModalData.remaining} switch{quizWarningModalData.remaining === 1 ? "" : "es"} left)
+                </Button>
+              </div>
+            </div>
+          )}
 
           {/* Round 3: Group Discussion Video Room Modal */}
           {activeGdDriveId && (

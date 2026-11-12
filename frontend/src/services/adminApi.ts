@@ -321,6 +321,9 @@ export const adminApi = {
   getRoundsExportUrl: (driveId: number) =>
     `/api/v1/officer/drives/${driveId}/export-rounds`,
 
+  exportRoundsCsv: (driveId: number) =>
+    apiClient.download(`/api/v1/officer/drives/${driveId}/export-rounds`, `Placement_Drive_${driveId}_Rounds_Report.csv`),
+
   // Milestone 8: Officer Offer Verification Desk & Workflows
   getOffers: (params?: { verification_status?: string; status?: string; search?: string; page?: number; per_page?: number }) => {
     const q = new URLSearchParams();
@@ -517,6 +520,9 @@ export interface DriveRoundsPipelineResponse {
       quiz_score: number | null;
       status: "AWAITING_TPO_DISPATCH" | "DISPATCHED_PENDING" | "CLEARED" | "FAILED" | "DISQUALIFIED" | "PENDING";
       is_qualified: boolean;
+      tab_switches?: number;
+      is_disqualified?: boolean;
+      disqualification_reason?: string | null;
       skill_breakdown: Record<string, number>;
       dispatched_at?: string | null;
       submitted_at?: string | null;

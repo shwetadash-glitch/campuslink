@@ -244,6 +244,49 @@ class SpeechDeliveryAndDynamicTopicsTest extends TestCase
         $streamResponse->assertStatus(200);
     }
 
+    public function test_audio_submission_accepts_json_stringified_telemetry_from_multipart_form(): void
+    {
+        $scenario = CommunicationScenario::create([
+            'category' => 'TECHNICAL_EXPLANATION',
+            'title' => 'Form Data Telemetry Test Scenario',
+            'prompt_text' => 'Explain message queue architectures to the infra team.',
+            'context_scenario' => 'Infrastructure leads are reviewing message broker options.',
+            'target_audience' => 'Infrastructure Leads',
+            'difficulty' => 'INTERMEDIATE',
+            'min_word_limit' => 20,
+            'max_word_limit' => 200,
+            'is_active' => true,
+        ]);
+
+        $session = CommunicationPracticeSession::create([
+            'student_id' => $this->student->id,
+            'scenario_id' => $scenario->id,
+            'category' => $scenario->category,
+            'status' => 'IN_PROGRESS',
+            'attempt_number' => 1,
+            'revision_number' => 1,
+        ]);
+
+        $fakeAudio = UploadedFile::fake()->create('spoken_response.webm', 150, 'audio/webm');
+        $transcript = "We can leverage RabbitMQ as an intermediate buffer to decouple ingestion from asynchronous worker processing. This prevents database lock escalations under burst loads.";
+
+        // Submitting telemetry as a raw JSON string (as sent by FormData.append('telemetry', JSON.stringify(...)))
+        $response = $this->post("/api/v1/students/me/communication-coach/sessions/{$session->id}/submit-audio", [
+            'audio' => $fakeAudio,
+            'transcript' => $transcript,
+            'duration_seconds' => '45.0',
+            'telemetry' => json_encode([
+                'duration_seconds' => 45.0,
+                'silence_duration_seconds' => 3.2,
+                'silence_ratio' => 0.07,
+            ]),
+        ]);
+
+        $response->assertStatus(200);
+        $this->assertEquals('AUDIO', $response->json('session.submission_mode'));
+        $this->assertNotNull($response->json('feedback.grade_tier'));
+    }
+
     public function test_group_discussion_audio_submission_is_explicitly_deferred(): void
     {
         $gdScenario = CommunicationScenario::create([

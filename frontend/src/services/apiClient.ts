@@ -200,6 +200,58 @@ export const apiClient = {
       headers,
     });
   },
+
+  download: async (endpoint: string, defaultFilename = "download.csv"): Promise<void> => {
+    const token = getAuthToken();
+    const headers: Record<string, string> = {};
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`;
+    }
+    const url = endpoint.startsWith("http") ? endpoint : `${API_BASE_URL}${endpoint}`;
+
+    let response: Response;
+    try {
+      response = await fetch(url, {
+        method: "GET",
+        headers,
+      });
+    } catch (err: any) {
+      throw new ApiError(
+        err?.message || "Network error: Unable to connect to server.",
+        0
+      );
+    }
+
+    if (!response.ok) {
+      let payload: any = null;
+      try {
+        payload = await response.json();
+      } catch {
+        payload = { detail: response.statusText };
+      }
+      const normalized = parseApiError({ ...payload, status: response.status });
+      throw new ApiError(normalized.message, response.status, normalized.fieldErrors);
+    }
+
+    const blob = await response.blob();
+    let filename = defaultFilename;
+    const disposition = response.headers.get("content-disposition");
+    if (disposition && disposition.indexOf("filename=") !== -1) {
+      const match = disposition.match(/filename\*?=['"]?(?:UTF-8'')?([^"';]+)['"]?/i);
+      if (match && match[1]) {
+        filename = decodeURIComponent(match[1].trim());
+      }
+    }
+
+    const blobUrl = window.URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = blobUrl;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(blobUrl);
+  },
 };
 
 

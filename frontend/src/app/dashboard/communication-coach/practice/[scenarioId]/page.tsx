@@ -15,6 +15,9 @@ import {
   CommunicationScenarioItem,
   CommunicationPracticeSessionData,
 } from "@/services/communicationCoachApi";
+import { GroupDiscussionSetupModal } from "@/components/gd/GroupDiscussionSetupModal";
+import { GroupDiscussionVideoRoomModal } from "@/components/gd/GroupDiscussionVideoRoomModal";
+import { GdPanelConfigResponse } from "@/services/studentsApi";
 
 export default function PracticeRoomPage({ params }: { params: Promise<{ scenarioId: string }> }) {
   const resolvedParams = use(params);
@@ -32,6 +35,11 @@ export default function PracticeRoomPage({ params }: { params: Promise<{ scenari
   const [practiceMode, setPracticeMode] = useState<"AUDIO" | "TEXT">("TEXT");
   const [deferralNotice, setDeferralNotice] = useState<string | null>(null);
   const [errorBanner, setErrorBanner] = useState<{ code: string; message: string; canRetry: boolean } | null>(null);
+
+  // Group Discussion interactive panel & video room states
+  const [isGdSetupModalOpen, setIsGdSetupModalOpen] = useState<boolean>(false);
+  const [gdPanelData, setGdPanelData] = useState<GdPanelConfigResponse | null>(null);
+  const [isGdRoomOpen, setIsGdRoomOpen] = useState<boolean>(false);
 
   useEffect(() => {
     initPractice();
@@ -138,8 +146,13 @@ export default function PracticeRoomPage({ params }: { params: Promise<{ scenari
       }
       formData.append("transcript", payload.transcript);
       formData.append("duration_seconds", String(payload.duration));
-      if (payload.telemetry) {
-        formData.append("telemetry", JSON.stringify(payload.telemetry));
+      if (payload.telemetry && typeof payload.telemetry === "object") {
+        Object.entries(payload.telemetry).forEach(([key, val]) => {
+          if (val !== undefined && val !== null) {
+            formData.append(`telemetry[${key}]`, String(val));
+          }
+        });
+        formData.append("telemetry_json", JSON.stringify(payload.telemetry));
       }
 
       const res = await communicationCoachApi.submitAudioResponse(session.id, formData);
@@ -220,10 +233,8 @@ export default function PracticeRoomPage({ params }: { params: Promise<{ scenari
     if (!scenario) return;
 
     if (scenario.category === "GROUP_DISCUSSION") {
-      setDeferralNotice(
-        "Group Discussion voice mode is deferred for subsequent multi-participant conversational turn-taking phase. Please use typed practice for this exercise."
-      );
-      setPracticeMode("TEXT");
+      setDeferralNotice(null);
+      setIsGdSetupModalOpen(true);
       return;
     }
 
@@ -306,11 +317,19 @@ export default function PracticeRoomPage({ params }: { params: Promise<{ scenari
           {/* Mode Switcher Toggle */}
           <Button
             onClick={handleToggleVoiceMode}
-            variant="outline"
+            variant={scenario.category === "GROUP_DISCUSSION" ? "primary" : "outline"}
             size="sm"
-            className="text-xs font-bold border-campusblue-200 text-campusblue-900 hover:bg-campusblue-50"
+            className={`text-xs font-bold ${
+              scenario.category === "GROUP_DISCUSSION"
+                ? "bg-indigo-600 hover:bg-indigo-700 text-white shadow-md shadow-indigo-600/20"
+                : "border-campusblue-200 text-campusblue-900 hover:bg-campusblue-50"
+            }`}
           >
-            {practiceMode === "AUDIO" ? "⌨️ Switch to Typed Practice" : "🎙️ Switch to Voice Practice"}
+            {scenario.category === "GROUP_DISCUSSION"
+              ? "👥🎙️ Launch Live GD Room (Friends / Random)"
+              : practiceMode === "AUDIO"
+              ? "⌨️ Switch to Typed Practice"
+              : "🎙️ Switch to Voice Practice"}
           </Button>
 
           {/* Dynamic Re-roll Topic Button */}
@@ -326,6 +345,57 @@ export default function PracticeRoomPage({ params }: { params: Promise<{ scenari
           )}
         </div>
       </div>
+
+      {/* Group Discussion Collaborative Panel Banner */}
+      {scenario.category === "GROUP_DISCUSSION" && (
+        <Card className="mb-6 p-5 bg-gradient-to-r from-indigo-950 via-purple-950 to-slate-900 border border-indigo-700/60 text-white shadow-md">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <span className="text-2xs uppercase tracking-widest text-indigo-300 font-extrabold">
+                  👥 Interactive Group Discussion Active
+                </span>
+                <span className="px-2 py-0.5 rounded-full bg-indigo-500/30 text-indigo-200 text-3xs font-extrabold border border-indigo-400/40">
+                  Friends & Random Cohort Matching
+                </span>
+              </div>
+              <h4 className="text-base font-black">
+                Practice This Discussion With Friends or Random Students
+              </h4>
+              <p className="text-xs text-indigo-200 max-w-2xl leading-relaxed">
+                Rather than practicing in isolation, participate in an authentic simulated discussion panel. Invite friends from your campus cohort or get placed between random students with real-time AI scoring.
+              </p>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+              <Button
+                onClick={() => setIsGdSetupModalOpen(true)}
+                className="bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs px-4 py-2.5 shadow-md flex items-center gap-1.5"
+              >
+                <span>👥 Add Friends</span>
+              </Button>
+              <Button
+                onClick={async () => {
+                  try {
+                    const res = await (await import("@/services/studentsApi")).studentsApi.configureGdPanel({
+                      mode: "RANDOM",
+                      scenario_id: scenario.id,
+                      topic_title: scenario.title,
+                    });
+                    setGdPanelData(res);
+                    setIsGdRoomOpen(true);
+                  } catch (e: any) {
+                    setIsGdSetupModalOpen(true);
+                  }
+                }}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs px-4 py-2.5 shadow-md flex items-center gap-1.5"
+              >
+                <span>🎲 Match Random Students</span>
+              </Button>
+            </div>
+          </div>
+        </Card>
+      )}
 
       {/* Deferral Notice Banner */}
       {deferralNotice && (
@@ -532,6 +602,39 @@ export default function PracticeRoomPage({ params }: { params: Promise<{ scenari
           )}
         </div>
       </div>
+
+      {/* Group Discussion Setup Modal */}
+      {isGdSetupModalOpen && scenario && (
+        <GroupDiscussionSetupModal
+          isOpen={isGdSetupModalOpen}
+          onClose={() => setIsGdSetupModalOpen(false)}
+          scenarioId={scenario.id}
+          scenarioTitle={scenario.title}
+          scenarioDescription={scenario.prompt_text}
+          difficulty={scenario.difficulty}
+          onPanelReady={(config) => {
+            setGdPanelData(config);
+            setIsGdRoomOpen(true);
+          }}
+        />
+      )}
+
+      {/* Group Discussion Video Room */}
+      {isGdRoomOpen && scenario && (
+        <GroupDiscussionVideoRoomModal
+          isOpen={isGdRoomOpen}
+          scenarioId={scenario.id}
+          scenarioTitle={scenario.title}
+          panelData={gdPanelData}
+          onClose={() => {
+            setIsGdRoomOpen(false);
+            setGdPanelData(null);
+          }}
+          onSuccess={() => {
+            initPractice();
+          }}
+        />
+      )}
     </AppLayout>
   );
 }

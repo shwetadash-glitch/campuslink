@@ -8,6 +8,7 @@ class ResumeProfileAggregatorService
 {
     /**
      * Aggregate verified and unverified student information into structured resume baseline content.
+     * Supports both Freshers and Experienced Professionals.
      * Does NOT alter or mutate the underlying student records.
      */
     public function aggregateProfile(Student $student): array
@@ -52,7 +53,7 @@ class ResumeProfileAggregatorService
                     'end_year' => $item->end_year,
                     'score_value' => (float) $item->score_value,
                     'score_type' => $item->score_type,
-                    'is_verified' => true, // Academic records in campus system
+                    'is_verified' => true,
                 ];
             })
             ->values()
@@ -76,7 +77,7 @@ class ResumeProfileAggregatorService
         // 3. Technical & Domain Skills (Distinguishing verified and student-claimed)
         $skills = $student->skills->map(function ($item) {
             $skillName = $item->skill ? $item->skill->name : 'Technical Skill';
-            $category = $item->skill ? $item->skill->category : 'General';
+            $category = $item->skill ? $item->skill->category : 'Core Technologies';
             
             $sourceVal = $item->source instanceof \BackedEnum ? $item->source->value : (string) ($item->source ?? 'STUDENT');
             $proficiencyVal = $item->proficiency_level instanceof \BackedEnum ? $item->proficiency_level->value : (string) ($item->proficiency_level ?? 'INTERMEDIATE');
@@ -95,8 +96,50 @@ class ResumeProfileAggregatorService
             ];
         })->values()->all();
 
-        // 4. Capstone & Coursework Projects
+        // 4. Work Experience & Internships (from profile metadata)
+        $rawExperience = $metadata['work_experience'] ?? ($metadata['experience'] ?? ($metadata['internships'] ?? []));
+        $workExperience = [];
+        if (is_array($rawExperience)) {
+            foreach ($rawExperience as $idx => $exp) {
+                if (is_array($exp)) {
+                    $highlights = [];
+                    if (!empty($exp['highlights']) && is_array($exp['highlights'])) {
+                        $highlights = array_values(array_filter($exp['highlights']));
+                    } elseif (!empty($exp['description'])) {
+                        $highlights = array_values(array_filter(array_map('trim', explode("\n", $exp['description']))));
+                    }
+
+                    $workExperience[] = [
+                        'id' => $exp['id'] ?? ($idx + 1),
+                        'job_title' => $exp['job_title'] ?? ($exp['title'] ?? ($exp['role'] ?? 'Software Engineer')),
+                        'company' => $exp['company'] ?? ($exp['organization'] ?? 'Tech Corp'),
+                        'location' => $exp['location'] ?? '',
+                        'start_date' => $exp['start_date'] ?? ($exp['startDate'] ?? ''),
+                        'end_date' => $exp['end_date'] ?? ($exp['endDate'] ?? ''),
+                        'is_current' => !empty($exp['is_current']) || !empty($exp['isCurrent']),
+                        'technologies' => $exp['technologies'] ?? '',
+                        'description' => $exp['description'] ?? '',
+                        'highlights' => $highlights,
+                        'is_verified' => !empty($exp['is_verified']),
+                    ];
+                }
+            }
+        }
+
+        // 5. Capstone & Coursework Projects
         $projects = $student->projects->map(function ($item) {
+            $highlights = [];
+            if (!empty($item->description)) {
+                $lines = array_filter(array_map('trim', explode("\n", $item->description)));
+                $highlights = array_values($lines);
+            }
+            if (empty($highlights)) {
+                $techDesc = $item->technologies ? " utilizing {$item->technologies}" : "";
+                $highlights = [
+                    "Engineered {$item->title}{$techDesc} with clean architecture and robust error handling.",
+                ];
+            }
+
             return [
                 'id' => $item->id,
                 'title' => $item->title,
@@ -104,12 +147,12 @@ class ResumeProfileAggregatorService
                 'technologies' => $item->technologies ?? '',
                 'project_url' => $item->project_url ?? '',
                 'role' => 'Lead Developer',
-                'highlights' => !empty($item->description) ? array_filter(array_map('trim', explode("\n", $item->description))) : [],
+                'highlights' => $highlights,
                 'is_verified' => !empty($item->project_url),
             ];
         })->values()->all();
 
-        // 5. Certifications & Credentials
+        // 6. Certifications & Credentials
         $certifications = $student->certifications->map(function ($item) {
             $hasProof = !empty($item->proof_path);
 
@@ -125,27 +168,78 @@ class ResumeProfileAggregatorService
             ];
         })->values()->all();
 
-        // 6. Default Grounded Summary
-        $cgpaText = $student->cgpa ? " with a cumulative GPA of {$student->cgpa}" : "";
-        $skillsSample = collect($skills)->take(4)->pluck('name')->implode(', ');
-        $skillsPhrase = $skillsSample ? " Proficient in {$skillsSample}." : "";
-        $defaultSummary = "Undergraduate in {$student->branch} (Class of {$student->graduation_year}){$cgpaText} seeking career opportunities in professional engineering and software development.{$skillsPhrase}";
+        // 7. Achievements & Honors (from profile metadata)
+        $rawAchievements = $metadata['achievements'] ?? ($metadata['awards'] ?? ($metadata['honors'] ?? []));
+        $achievements = [];
+        if (is_array($rawAchievements)) {
+            foreach ($rawAchievements as $idx => $ach) {
+                if (is_string($ach)) {
+                    $achievements[] = [
+                        'id' => $idx + 1,
+                        'title' => $ach,
+                        'issuer' => '',
+                        'date' => '',
+                        'description' => '',
+                    ];
+                } elseif (is_array($ach)) {
+                    $achievements[] = [
+                        'id' => $ach['id'] ?? ($idx + 1),
+                        'title' => $ach['title'] ?? 'Academic Honor',
+                        'issuer' => $ach['issuer'] ?? ($ach['organization'] ?? ''),
+                        'date' => $ach['date'] ?? ($ach['year'] ?? ''),
+                        'description' => $ach['description'] ?? '',
+                    ];
+                }
+            }
+        }
+
+        // Determine Candidate Profile Type: Fresher vs Experienced
+        $isExperienced = count($workExperience) > 0;
+        $candidateType = $isExperienced ? 'EXPERIENCED' : 'FRESHER';
+
+        // 8. Grounded Default Summary
+        $skillsSample = collect($skills)->take(5)->pluck('name')->implode(', ');
+        $skillsPhrase = $skillsSample ? "with core skills in {$skillsSample}" : "grounded in software engineering principles";
+
+        if ($isExperienced) {
+            $companies = collect($workExperience)->pluck('company')->filter()->unique()->implode(', ');
+            $roles = collect($workExperience)->pluck('job_title')->filter()->unique()->implode(', ');
+            $expSnippet = $companies ? "with practical engineering experience at {$companies}" : "with hands-on industry experience";
+            $defaultSummary = "Dedicated {$roles} {$expSnippet} {$skillsPhrase}. Demonstrated ability to deliver reliable software features, collaborate in agile teams, and solve complex technical challenges with clean code.";
+        } else {
+            $cgpaText = $student->cgpa ? " maintaining an institutional CGPA of {$student->cgpa}/10" : "";
+            $projSample = collect($projects)->take(2)->pluck('title')->implode(' and ');
+            $projSnippet = $projSample ? " Demonstrated practical problem solving through projects including {$projSample}." : "";
+            $defaultSummary = "Undergraduate in {$student->branch} (Class of {$student->graduation_year}){$cgpaText} {$skillsPhrase}.{$projSnippet} Seeking to leverage analytical capability and software development competencies in entry-level engineering roles.";
+        }
+
+        // Section ordering based on Fresher vs Experienced profile standards
+        if ($isExperienced) {
+            $sectionOrder = ['summary', 'work_experience', 'skills', 'projects', 'education', 'certifications', 'achievements'];
+        } else {
+            $sectionOrder = ['summary', 'skills', 'projects', 'education', 'certifications', 'achievements'];
+        }
 
         return [
+            'candidate_type' => $candidateType,
             'personal_info' => $personalInfo,
             'summary' => $defaultSummary,
             'academic_history' => $academicHistory,
             'skills' => $skills,
+            'work_experience' => $workExperience,
             'projects' => $projects,
             'certifications' => $certifications,
+            'achievements' => $achievements,
             'custom_sections' => [],
-            'section_order' => ['summary', 'skills', 'projects', 'education', 'certifications'],
+            'section_order' => $sectionOrder,
             'section_visibility' => [
                 'summary' => true,
                 'skills' => true,
+                'work_experience' => $isExperienced,
                 'projects' => true,
                 'education' => true,
-                'certifications' => true,
+                'certifications' => !empty($certifications),
+                'achievements' => !empty($achievements),
                 'custom_sections' => true,
             ],
         ];

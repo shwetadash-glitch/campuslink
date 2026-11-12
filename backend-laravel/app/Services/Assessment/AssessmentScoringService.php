@@ -150,6 +150,14 @@ class AssessmentScoringService
         $earnedPercentage = $totalPossible > 0 ? (float) round(($finalScore / $totalPossible) * 100, 2) : 0.0;
         $passed = ($earnedPercentage >= $assessment->pass_percentage);
 
+        // Security check: If student changed tabs > 3 times, disqualify and mark score as 0
+        $isDisqualified = (bool) ($session->is_disqualified || ($session->tab_switches > 3));
+        if ($isDisqualified) {
+            $finalScore = 0.0;
+            $earnedPercentage = 0.0;
+            $passed = false;
+        }
+
         // Build improvement roadmap for remediation
         $criticalFocusAreas = [];
         foreach ($categoryScores as $catName => $scores) {
@@ -190,6 +198,11 @@ class AssessmentScoringService
             'earned_percentage' => $earnedPercentage,
             'pass_percentage_required' => $assessment->pass_percentage,
             'passed' => $passed,
+            'tab_switches' => (int) ($session->tab_switches ?? 0),
+            'is_disqualified' => $isDisqualified,
+            'disqualification_reason' => $isDisqualified
+                ? "Disqualified: Exceeded maximum allowed tab switches ({$session->tab_switches} switches detected, maximum allowed is 3). Total score set to 0."
+                : null,
             'categories' => $categoryScores,
             'improvement_roadmap' => $improvementRoadmap,
             'evaluated_at' => Carbon::now()->toIso8601String(),
@@ -199,6 +212,11 @@ class AssessmentScoringService
             'status' => ($session->status === 'EXPIRED') ? 'EXPIRED' : 'EVALUATED',
             'total_score' => $finalScore,
             'passed' => $passed,
+            'tab_switches' => (int) ($session->tab_switches ?? 0),
+            'is_disqualified' => $isDisqualified,
+            'disqualification_reason' => $isDisqualified
+                ? "Disqualified: Exceeded maximum allowed tab switches ({$session->tab_switches} switches detected, maximum allowed is 3). Total score set to 0."
+                : null,
             'evaluation_summary' => $summary,
         ]);
 

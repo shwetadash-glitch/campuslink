@@ -30,6 +30,19 @@ export const StudentAssessmentsView: React.FC = () => {
   const [runCodeOutput, setRunCodeOutput] = useState<RunCodeResult | null>(null);
   const [resultData, setResultData] = useState<AssessmentResult | null>(null);
 
+  // Tab Switch & Examination Integrity State
+  const [tabSwitchCount, setTabSwitchCount] = useState<number>(0);
+  const [showWarningModal, setShowWarningModal] = useState<boolean>(false);
+  const [warningModalData, setWarningModalData] = useState<{ count: number; remaining: number; text: string }>({
+    count: 0,
+    remaining: 3,
+    text: "",
+  });
+  const [isDisqualified, setIsDisqualified] = useState<boolean>(false);
+
+  const tabSwitchCountRef = useRef<number>(0);
+  const lastSwitchTimeRef = useRef<number>(0);
+
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
   const loadAvailable = async () => {
@@ -69,14 +82,90 @@ export const StudentAssessmentsView: React.FC = () => {
     };
   }, [viewMode, secondsLeft]);
 
-  // Examination Integrity Telemetry (Tab Switch / Window Blur)
+  const handleDisqualifyAutoSubmit = async (finalCount: number) => {
+    if (!activeSession) return;
+    setSubmitting(true);
+    try {
+      await assessmentsApi.submitSession(activeSession.id, {
+        tab_switches: finalCount,
+        disqualified: true,
+      });
+      const fullResult = await assessmentsApi.getResult(activeSession.id);
+      setResultData(fullResult);
+      setViewMode("RESULT");
+    } catch {
+      setResultData({
+        session_id: activeSession.id,
+        assessment_title: activeSession.assessment_title,
+        status: "EVALUATED",
+        total_score: 0,
+        total_possible: 100,
+        passed: false,
+        pass_percentage: 60,
+        submitted_at: new Date().toLocaleTimeString(),
+        proctoring_flags_count: finalCount,
+        tab_switches: finalCount,
+        is_disqualified: true,
+        disqualification_reason: `Disqualified: Exceeded maximum allowed tab switches (${finalCount} switches detected, maximum allowed is 3). Total score set to 0.`,
+      });
+      setViewMode("RESULT");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // Examination Integrity Telemetry (Tab Switch / Window Blur / Fullscreen Exit)
   useEffect(() => {
-    if (viewMode !== "EXAM" || !activeSession) return;
+    if (viewMode !== "EXAM" || !activeSession || isDisqualified) return;
+
+    const handleTabSwitchEvent = (source: string) => {
+      const now = Date.now();
+      // Throttle to 1 event per 1.5s to prevent double firing from blur + visibilitychange
+      if (now - lastSwitchTimeRef.current < 1500) return;
+      lastSwitchTimeRef.current = now;
+
+      const newCount = tabSwitchCountRef.current + 1;
+      tabSwitchCountRef.current = newCount;
+      setTabSwitchCount(newCount);
+
+      if (newCount > 3) {
+        // Disqualified! Exceeded 3 switches
+        setIsDisqualified(true);
+        assessmentsApi.sendTelemetry(activeSession.id, "TAB_SWITCH", {
+          tab_switches: newCount,
+          disqualified: true,
+          source,
+          timestamp: new Date().toISOString(),
+        });
+        handleDisqualifyAutoSubmit(newCount);
+      } else {
+        const remaining = 3 - newCount;
+        setWarningModalData({
+          count: newCount,
+          remaining,
+          text:
+            newCount === 3
+              ? "🚨 FINAL WARNING (3 of 3): Tab switch detected! Any further tab switch will immediately disqualify you and award a score of 0."
+              : `⚠️ Warning ${newCount} of 3: You switched away from the assessment! Please remain on this tab. ${remaining} warning${remaining === 1 ? "" : "s"} remaining before automatic disqualification with 0 marks.`,
+        });
+        setShowWarningModal(true);
+        assessmentsApi.sendTelemetry(activeSession.id, "TAB_SWITCH", {
+          tab_switches: newCount,
+          disqualified: false,
+          source,
+          timestamp: new Date().toISOString(),
+        });
+      }
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "hidden") {
+        handleTabSwitchEvent("VISIBILITY_HIDDEN");
+      }
+    };
 
     const handleBlur = () => {
-      assessmentsApi.sendTelemetry(activeSession.id, "WINDOW_BLUR", {
-        timestamp: new Date().toISOString(),
-      });
+      handleTabSwitchEvent("WINDOW_BLUR");
     };
 
     const handleFullscreenChange = () => {
@@ -87,14 +176,16 @@ export const StudentAssessmentsView: React.FC = () => {
       }
     };
 
+    document.addEventListener("visibilitychange", handleVisibilityChange);
     window.addEventListener("blur", handleBlur);
     document.addEventListener("fullscreenchange", handleFullscreenChange);
 
     return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
       window.removeEventListener("blur", handleBlur);
       document.removeEventListener("fullscreenchange", handleFullscreenChange);
     };
-  }, [viewMode, activeSession]);
+  }, [viewMode, activeSession, isDisqualified]);
 
   const handleStartOrResume = async (assessmentId: number) => {
     setLoading(true);
@@ -103,6 +194,10 @@ export const StudentAssessmentsView: React.FC = () => {
       const session = await assessmentsApi.startSession(assessmentId);
       setActiveSession(session);
       setSecondsLeft(session.seconds_remaining);
+      const switches = (session as any).tab_switches || 0;
+      tabSwitchCountRef.current = switches;
+      setTabSwitchCount(switches);
+      setIsDisqualified(!!(session as any).is_disqualified || switches > 3);
 
       // Populate saved answers
       const initialAnswers: Record<number, string> = {};
@@ -156,7 +251,11 @@ export const StudentAssessmentsView: React.FC = () => {
     if (!confirm("Are you sure you want to finish and submit your examination?")) return;
     setSubmitting(true);
     try {
-      await assessmentsApi.submitSession(activeSession!.id);
+      const finalCount = tabSwitchCountRef.current;
+      await assessmentsApi.submitSession(activeSession!.id, {
+        tab_switches: finalCount,
+        disqualified: finalCount > 3,
+      });
       const fullResult = await assessmentsApi.getResult(activeSession!.id);
       setResultData(fullResult);
       setViewMode("RESULT");
@@ -170,7 +269,11 @@ export const StudentAssessmentsView: React.FC = () => {
   const handleAutoSubmit = async () => {
     if (!activeSession) return;
     try {
-      await assessmentsApi.submitSession(activeSession.id);
+      const finalCount = tabSwitchCountRef.current;
+      await assessmentsApi.submitSession(activeSession.id, {
+        tab_switches: finalCount,
+        disqualified: finalCount > 3,
+      });
       const fullResult = await assessmentsApi.getResult(activeSession.id);
       setResultData(fullResult);
       setViewMode("RESULT");
@@ -354,7 +457,25 @@ export const StudentAssessmentsView: React.FC = () => {
               <h2 className="text-lg font-black text-campusblue-900 mt-1">{activeSession.assessment_title}</h2>
             </div>
 
-            <div className="flex items-center gap-6">
+            <div className="flex items-center gap-4 sm:gap-6 flex-wrap">
+              {/* Tab Switches Proctoring Badge */}
+              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-2xs font-bold transition-all bg-amber-50 border-amber-200 text-amber-900 shadow-xs">
+                <span>🛡️ Tab Switches:</span>
+                <span className={tabSwitchCount > 0 ? (tabSwitchCount >= 3 ? "text-rose-700 font-extrabold" : "text-amber-800") : "text-emerald-700 font-bold"}>
+                  {tabSwitchCount} / 3 allowed
+                </span>
+                {tabSwitchCount > 0 && tabSwitchCount <= 3 && (
+                  <span className="text-3xs px-1.5 py-0.2 rounded bg-amber-200 text-amber-900 font-extrabold">
+                    {3 - tabSwitchCount} warning{3 - tabSwitchCount === 1 ? "" : "s"} left
+                  </span>
+                )}
+                {tabSwitchCount > 3 && (
+                  <span className="text-3xs px-1.5 py-0.2 rounded bg-rose-200 text-rose-900 font-extrabold animate-pulse">
+                    DISQUALIFIED
+                  </span>
+                )}
+              </div>
+
               <div className="text-right">
                 <div className="text-2xs font-bold text-campusblue-500 uppercase tracking-wider">Time Remaining</div>
                 <div
@@ -384,6 +505,35 @@ export const StudentAssessmentsView: React.FC = () => {
               </Button>
             </div>
           </div>
+
+          {/* Real-time Tab Switch Banner */}
+          {tabSwitchCount > 0 && (
+            <div
+              className={`p-3.5 rounded-xl border text-xs flex items-center justify-between gap-3 ${
+                tabSwitchCount > 3
+                  ? "bg-rose-50 border-rose-300 text-rose-900"
+                  : tabSwitchCount === 3
+                  ? "bg-rose-50 border-rose-300 text-rose-900 font-bold"
+                  : "bg-amber-50 border-amber-300 text-amber-900"
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <span className="text-base">{tabSwitchCount >= 3 ? "🚨" : "⚠️"}</span>
+                <div>
+                  <span className="font-bold">Proctoring Telemetry Alert: </span>
+                  <span>
+                    You have changed tabs <strong>{tabSwitchCount} time(s)</strong>.
+                    {tabSwitchCount < 3 && ` You have ${3 - tabSwitchCount} warning(s) remaining.`}
+                    {tabSwitchCount === 3 && " This was your FINAL WARNING. Any further tab switch marks your score as ZERO."}
+                    {tabSwitchCount > 3 && " You have exceeded 3 tab switches. Assessment marked as 0."}
+                  </span>
+                </div>
+              </div>
+              <span className="text-2xs uppercase tracking-wider font-extrabold px-2 py-0.5 rounded bg-white/80 border border-current shrink-0">
+                Limit: 3 Max
+              </span>
+            </div>
+          )}
 
           {/* Question Layout: Question Palette + Question Body */}
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
@@ -632,17 +782,38 @@ export const StudentAssessmentsView: React.FC = () => {
       {viewMode === "RESULT" && resultData && (() => {
         const roadmap = resultData.improvement_roadmap || resultData.evaluation_summary?.improvement_roadmap;
         const categories = resultData.evaluation_summary?.categories || {};
+        const isDisq = !!(resultData.is_disqualified || (resultData.tab_switches ?? 0) > 3 || resultData.evaluation_summary?.is_disqualified);
 
         return (
           <div className="max-w-3xl mx-auto space-y-6">
             {/* Main Score Overview Card */}
             <div className="bg-white border border-campusblue-200 rounded-2xl p-8 shadow-sm space-y-6 text-center">
+              {isDisq && (
+                <div className="p-4 rounded-xl bg-rose-50 border-2 border-rose-300 text-rose-950 text-left space-y-1.5 shadow-xs">
+                  <div className="flex items-center gap-2 font-black text-rose-800 text-sm">
+                    <span className="text-lg">🚨</span>
+                    <span>DISQUALIFIED: EXCEEDED TAB SWITCH LIMIT (&gt;3 SWITCHES)</span>
+                  </div>
+                  <p className="text-xs text-rose-900 leading-relaxed">
+                    {resultData.disqualification_reason ||
+                      `You switched tabs ${resultData.tab_switches || ">3"} times during this assessment. As per examination integrity rules, candidates with more than 3 tab changes are automatically disqualified and awarded a score of 0.`}
+                  </p>
+                  <div className="text-2xs font-extrabold text-rose-700">
+                    Tab Switches Logged: {resultData.tab_switches ?? ">3"} &bull; Score Recorded: 0 / {resultData.total_possible}
+                  </div>
+                </div>
+              )}
+
               <div
                 className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto ${
-                  resultData.passed ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700"
+                  isDisq
+                    ? "bg-rose-100 text-rose-700"
+                    : resultData.passed
+                    ? "bg-emerald-100 text-emerald-700"
+                    : "bg-rose-100 text-rose-700"
                 }`}
               >
-                {resultData.passed ? (
+                {resultData.passed && !isDisq ? (
                   <span className="text-3xl font-black">✓</span>
                 ) : (
                   <span className="text-3xl font-black">✕</span>
@@ -652,25 +823,39 @@ export const StudentAssessmentsView: React.FC = () => {
               <div>
                 <span
                   className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${
-                    resultData.passed ? "bg-emerald-100 text-emerald-800" : "bg-rose-100 text-rose-800"
+                    isDisq
+                      ? "bg-rose-100 text-rose-900 border border-rose-300 font-extrabold"
+                      : resultData.passed
+                      ? "bg-emerald-100 text-emerald-800"
+                      : "bg-rose-100 text-rose-800"
                   }`}
                 >
-                  {resultData.passed ? "Assessment Cleared" : "Cutoff Not Cleared"}
+                  {isDisq
+                    ? "Disqualified (Score: 0)"
+                    : resultData.passed
+                    ? "Assessment Cleared"
+                    : "Cutoff Not Cleared"}
                 </span>
                 <h2 className="text-xl font-black text-campusblue-900 mt-2">{resultData.assessment_title}</h2>
                 <p className="text-2xs text-campusblue-500 mt-1">Submitted at {resultData.submitted_at || "Recently"}</p>
               </div>
 
-              <div className="grid grid-cols-2 gap-4 bg-campusblue-50/60 p-4 rounded-xl text-left border border-campusblue-100">
+              <div className="grid grid-cols-3 gap-3 bg-campusblue-50/60 p-4 rounded-xl text-left border border-campusblue-100">
                 <div>
                   <div className="text-2xs text-campusblue-500 uppercase font-bold">Score Earned</div>
-                  <div className="text-2xl font-black text-campusblue-900">
-                    {resultData.total_score} / {resultData.total_possible}
+                  <div className={`text-2xl font-black ${isDisq ? "text-rose-700" : "text-campusblue-900"}`}>
+                    {isDisq ? 0 : resultData.total_score} / {resultData.total_possible}
                   </div>
                 </div>
                 <div>
                   <div className="text-2xs text-campusblue-500 uppercase font-bold">Passing Cutoff</div>
                   <div className="text-2xl font-black text-campusblue-900">{resultData.pass_percentage}%</div>
+                </div>
+                <div>
+                  <div className="text-2xs text-campusblue-500 uppercase font-bold">Tab Switches</div>
+                  <div className={`text-2xl font-black ${isDisq ? "text-rose-700 font-extrabold" : "text-campusblue-900"}`}>
+                    {resultData.tab_switches ?? 0}
+                  </div>
                 </div>
               </div>
 
@@ -909,6 +1094,40 @@ export const StudentAssessmentsView: React.FC = () => {
           </div>
         );
       })()}
+
+      {/* Tab Switch Warning Modal */}
+      {showWarningModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border-2 border-amber-400 space-y-4 text-center">
+            <div className="w-14 h-14 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center mx-auto text-2xl font-black">
+              ⚠️
+            </div>
+            <div>
+              <span className="text-2xs font-extrabold uppercase tracking-widest px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-300">
+                Examination Integrity Warning {warningModalData.count} of 3
+              </span>
+              <h3 className="text-lg font-black text-campusblue-900 mt-2">
+                Tab Switch Detected!
+              </h3>
+              <p className="text-xs text-campusblue-700 mt-2 leading-relaxed">
+                {warningModalData.text}
+              </p>
+            </div>
+            <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-left text-2xs text-rose-800">
+              <span className="font-bold block">Strict Examination Policy:</span>
+              Navigating to other tabs, minimizing the browser, or losing window focus is strictly monitored. If you switch tabs more than <strong>3 times</strong>, your assessment is automatically terminated and scored <strong>0</strong>.
+            </div>
+            <Button
+              variant="primary"
+              size="sm"
+              className="w-full bg-amber-600 hover:bg-amber-700 text-white font-bold py-2.5"
+              onClick={() => setShowWarningModal(false)}
+            >
+              I Understand &bull; Return to Exam
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

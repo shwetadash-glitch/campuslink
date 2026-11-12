@@ -417,6 +417,19 @@ class CommunicationCoachController extends Controller
             ->with('scenario')
             ->findOrFail($id);
 
+        if ($request->has('telemetry')) {
+            $rawTelemetry = $request->input('telemetry');
+            if (is_string($rawTelemetry)) {
+                $decoded = json_decode($rawTelemetry, true);
+                $request->merge(['telemetry' => is_array($decoded) ? $decoded : []]);
+            }
+        } elseif ($request->has('telemetry_json') && is_string($request->input('telemetry_json'))) {
+            $decoded = json_decode($request->input('telemetry_json'), true);
+            if (is_array($decoded)) {
+                $request->merge(['telemetry' => $decoded]);
+            }
+        }
+
         $request->validate([
             'audio' => 'nullable|file|max:25600', // 25MB max
             'transcript' => 'required|string',

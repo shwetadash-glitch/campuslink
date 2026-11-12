@@ -584,6 +584,9 @@ class DriveRoundsService
                     'submitted_at' => $r2Saved['submitted_at'] ?? null,
                     'completed_at' => $r2Saved['completed_at'] ?? $r2Saved['submitted_at'] ?? null,
                     'notes' => $r2Saved['notes'] ?? '',
+                    'tab_switches' => (int) ($r2Saved['tab_switches'] ?? 0),
+                    'is_disqualified' => (bool) ($r2Saved['is_disqualified'] ?? false),
+                    'disqualification_reason' => $r2Saved['disqualification_reason'] ?? null,
                 ];
             } else {
                 // Quiz not yet dispatched by TPO!
@@ -600,6 +603,9 @@ class DriveRoundsService
                     'submitted_at' => null,
                     'completed_at' => null,
                     'notes' => $isQualifiedR2 ? 'Awaiting TPO quiz dispatch.' : 'Not eligible for technical assessment.',
+                    'tab_switches' => 0,
+                    'is_disqualified' => false,
+                    'disqualification_reason' => null,
                 ];
             }
 
@@ -678,6 +684,9 @@ class DriveRoundsService
                     'quiz_score' => $r2Data['score'],
                     'status' => $r2Data['status'], // AWAITING_TPO_DISPATCH, DISPATCHED_PENDING, CLEARED, FAILED, DISQUALIFIED
                     'is_qualified' => $r2Data['status'] === 'CLEARED',
+                    'tab_switches' => (int) ($r2Data['tab_switches'] ?? 0),
+                    'is_disqualified' => (bool) ($r2Data['is_disqualified'] ?? false),
+                    'disqualification_reason' => $r2Data['disqualification_reason'] ?? null,
                     'skill_breakdown' => $r2Data['skill_breakdown'],
                     'dispatched_at' => $r2Data['dispatched_at'],
                     'submitted_at' => $r2Data['submitted_at'],
@@ -931,7 +940,7 @@ class DriveRoundsService
     /**
      * Evaluate student-submitted quiz answers against the technical question bank.
      */
-    public function evaluateStudentQuiz(PlacementDrive $drive, Student $student, array $submittedAnswers): array
+    public function evaluateStudentQuiz(PlacementDrive $drive, Student $student, array $submittedAnswers, int $tabSwitches = 0, bool $disqualified = false): array
     {
         $candidate = DriveCandidate::where('drive_id', $drive->id)
             ->where('student_id', $student->id)
@@ -979,8 +988,10 @@ class DriveRoundsService
             }
         }
 
-        $score = round(($correctCount / $totalQuestions) * 100.0, 1);
-        $passed = $score >= 60.0;
+        $rawScore = round(($correctCount / $totalQuestions) * 100.0, 1);
+        $isDisqualified = $disqualified || ($tabSwitches > 3);
+        $score = $isDisqualified ? 0.0 : $rawScore;
+        $passed = !$isDisqualified && ($score >= 60.0);
 
         $skillBreakdown = [];
         foreach ($skillStats as $sk => $data) {
@@ -988,20 +999,30 @@ class DriveRoundsService
         }
 
         $now = now()->toIso8601String();
+        $disqualificationReason = $isDisqualified
+            ? "Disqualified: Exceeded maximum allowed tab switches ({$tabSwitches} switches detected, maximum allowed is 3). Score marked as 0."
+            : null;
+
         $results['round_2'] = [
             'quiz_sent' => true,
             'student_submitted' => true,
-            'status' => $passed ? 'CLEARED' : 'FAILED',
+            'status' => $passed ? 'CLEARED' : ($isDisqualified ? 'DISQUALIFIED' : 'FAILED'),
             'score' => $score,
+            'raw_score' => $rawScore,
             'correct_answers' => $correctCount,
             'total_questions' => $totalQuestions,
             'passing_cutoff' => 60.0,
+            'tab_switches' => $tabSwitches,
+            'is_disqualified' => $isDisqualified,
+            'disqualification_reason' => $disqualificationReason,
             'skill_breakdown' => $skillBreakdown,
             'student_answers' => $submittedAnswers,
             'dispatched_at' => $r2['dispatched_at'] ?? $now,
             'submitted_at' => $now,
             'completed_at' => $now,
-            'notes' => $passed ? "Cleared technical evaluation with {$score}%." : "Failed to meet 60% passing cutoff (Scored {$score}%).",
+            'notes' => $isDisqualified
+                ? $disqualificationReason
+                : ($passed ? "Cleared technical evaluation with {$score}%." : "Failed to meet 60% passing cutoff (Scored {$score}%)."),
         ];
 
         $candidate->round_results = $results;
@@ -1020,9 +1041,11 @@ class DriveRoundsService
                     'user_id' => $student->user_id,
                     'notification_type' => 'ASSESSMENT_RESULT',
                     'title' => $passed ? "Assessment Passed: {$drive->name}" : "Assessment Completed: {$drive->name}",
-                    'message' => $passed
-                        ? "Congratulations! You scored {$score}% on the Technical Quiz and are qualified for Round 3 (Group Discussion)."
-                        : "You scored {$score}% on the Technical Quiz (cutoff was 60%). Keep sharpening your technical competencies in the Skill Gap Hub.",
+                    'message' => $isDisqualified
+                        ? "Your Technical Quiz for {$drive->name} was disqualified because you changed tabs {$tabSwitches} times (maximum allowed is 3). Score recorded: 0%."
+                        : ($passed
+                            ? "Congratulations! You scored {$score}% on the Technical Quiz and are qualified for Round 3 (Group Discussion)."
+                            : "You scored {$score}% on the Technical Quiz (cutoff was 60%). Keep sharpening your technical competencies in the Skill Gap Hub."),
                     'channel' => 'IN_APP',
                     'status' => 'SENT',
                     'sent_at' => now(),
@@ -1031,6 +1054,8 @@ class DriveRoundsService
                         'round' => 2,
                         'score' => $score,
                         'passed' => $passed,
+                        'tab_switches' => $tabSwitches,
+                        'is_disqualified' => $isDisqualified,
                     ],
                 ]);
             } catch (\Throwable $e) {
@@ -1040,15 +1065,21 @@ class DriveRoundsService
 
         return [
             'success' => true,
-            'status' => $passed ? 'CLEARED' : 'FAILED',
+            'status' => $passed ? 'CLEARED' : ($isDisqualified ? 'DISQUALIFIED' : 'FAILED'),
             'score' => $score,
+            'raw_score' => $rawScore,
+            'is_disqualified' => $isDisqualified,
+            'tab_switches' => $tabSwitches,
+            'disqualification_reason' => $disqualificationReason,
             'correct_answers' => $correctCount,
             'total_questions' => $totalQuestions,
             'passing_cutoff' => 60.0,
             'skill_breakdown' => $skillBreakdown,
-            'message' => $passed
-                ? "Congratulations! You cleared Round 2 with {$score}% and are qualified for Round 3."
-                : "You scored {$score}%, which is below the 60.0% cutoff.",
+            'message' => $isDisqualified
+                ? "Assessment Disqualified: You switched tabs {$tabSwitches} times (maximum allowed is 3). Your score has been marked as 0."
+                : ($passed
+                    ? "Congratulations! You cleared Round 2 with {$score}% and are qualified for Round 3."
+                    : "You scored {$score}%, which is below the 60.0% cutoff."),
         ];
     }
 
@@ -1142,7 +1173,7 @@ class DriveRoundsService
     /**
      * Provide comprehensive Group Discussion session data for student and peer panel.
      */
-    public function getGdSessionData(PlacementDrive $drive, Student $student): array
+    public function getGdSessionData(PlacementDrive $drive, Student $student, ?string $mode = null, ?array $peerIds = null): array
     {
         $candidate = DriveCandidate::where('drive_id', $drive->id)
             ->where('student_id', $student->id)
@@ -1212,6 +1243,35 @@ class DriveRoundsService
                 ]
             ],
         ];
+
+        // Custom peer injection for Friends or Random cohort placement
+        if ($mode === 'FRIENDS' && !empty($peerIds)) {
+            $friendStudents = Student::whereIn('id', $peerIds)->where('id', '!=', $student->id)->get();
+            if ($friendStudents->isNotEmpty()) {
+                foreach ($friendStudents->take(3) as $idx => $fs) {
+                    $peers[$idx]['student_identifier'] = $fs->student_identifier;
+                    $peers[$idx]['name'] = trim("{$fs->first_name} {$fs->last_name}");
+                    $peers[$idx]['branch'] = $fs->branch;
+                    $peers[$idx]['mode_badge'] = 'Friend / Added Peer';
+                    if (!empty($fs->profile_picture_url)) {
+                        $peers[$idx]['avatar_url'] = $fs->profile_picture_url;
+                    }
+                }
+            }
+        } elseif ($mode === 'RANDOM') {
+            $randomStudents = Student::where('id', '!=', $student->id)->inRandomOrder()->take(3)->get();
+            if ($randomStudents->isNotEmpty()) {
+                foreach ($randomStudents as $idx => $rs) {
+                    $peers[$idx]['student_identifier'] = $rs->student_identifier;
+                    $peers[$idx]['name'] = trim("{$rs->first_name} {$rs->last_name}");
+                    $peers[$idx]['branch'] = $rs->branch;
+                    $peers[$idx]['mode_badge'] = 'Random Match';
+                    if (!empty($rs->profile_picture_url)) {
+                        $peers[$idx]['avatar_url'] = $rs->profile_picture_url;
+                    }
+                }
+            }
+        }
 
         return [
             'drive_id' => $drive->id,
@@ -1469,6 +1529,8 @@ class DriveRoundsService
             'R1: Qualified for Quiz',
             'R2: Technical Quiz Score %',
             'R2: Quiz Result Status',
+            'R2: Tab Switches Detected',
+            'R2: Integrity Status',
             'R2: Qualified for GD',
             'R3: Group Discussion Topic',
             'R3: Clarity & Fluency (/20)',
@@ -1517,6 +1579,8 @@ class DriveRoundsService
                 // Round 2
                 $r2['quiz_score'] !== null ? $r2['quiz_score'] . '%' : 'PENDING',
                 $r2['status'],
+                $r2['tab_switches'] ?? 0,
+                (!empty($r2['is_disqualified']) || ($r2['tab_switches'] ?? 0) > 3) ? 'DISQUALIFIED (>3 Tabs)' : 'CLEARED INTEGRITY',
                 $r2['is_qualified'] ? 'YES' : 'NO',
 
                 // Round 3

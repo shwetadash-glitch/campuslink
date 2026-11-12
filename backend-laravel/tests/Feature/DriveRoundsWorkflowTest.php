@@ -436,4 +436,67 @@ class DriveRoundsWorkflowTest extends TestCase
         $this->assertEquals(93.0, $fresh->round_results['round_3']['overall_score']);
         $this->assertEquals('SELECTED', $fresh->round_results['round_3']['decision']);
     }
+
+    public function test_student_quiz_tab_switch_exceeding_three_marks_score_zero_and_disqualifies()
+    {
+        $candAi = DriveCandidate::where('drive_id', $this->drive->id)->where('student_id', $this->studentAi->id)->first();
+        $userStudent = $this->studentAi->user;
+
+        // 1. TPO dispatches quiz to student
+        $this->actingAs($this->tpoUser)
+            ->postJson("/api/v1/officer/drives/{$this->drive->id}/dispatch-quiz", [
+                'candidate_ids' => [$candAi->id],
+            ])
+            ->assertStatus(200);
+
+        // 2. Student takes quiz and submits with 4 tab switches (> 3 switches allowed)
+        $submitRes = $this->actingAs($userStudent)
+            ->postJson("/api/v1/students/me/drives/{$this->drive->id}/submit-quiz", [
+                'answers' => [
+                    'PY-101' => 'B',
+                    'PY-102' => 'A',
+                    'SQL-201' => 'C',
+                ],
+                'tab_switches' => 4,
+                'disqualified' => true,
+            ]);
+
+        $submitRes->assertStatus(200)
+            ->assertJson([
+                'success' => true,
+                'status' => 'DISQUALIFIED',
+                'score' => 0.0,
+                'is_disqualified' => true,
+                'tab_switches' => 4,
+            ]);
+
+        // 3. Verify in database: score is 0.0, status is DISQUALIFIED, candidate status REJECTED
+        $candFresh = $candAi->fresh();
+        $this->assertEquals(0.0, $candFresh->round_results['round_2']['score']);
+        $this->assertEquals('DISQUALIFIED', $candFresh->round_results['round_2']['status']);
+        $this->assertEquals(4, $candFresh->round_results['round_2']['tab_switches']);
+        $this->assertTrue($candFresh->round_results['round_2']['is_disqualified']);
+        $this->assertEquals('REJECTED', $candFresh->status);
+
+        // 4. Verify TPO pipeline and CSV export reflect tab switches and disqualification
+        $pipelineRes = $this->actingAs($this->tpoUser)
+            ->getJson("/api/v1/officer/drives/{$this->drive->id}/rounds-pipeline");
+
+        $pipelineRes->assertStatus(200);
+        $candidates = collect($pipelineRes->json('candidates'));
+        $aiCand = $candidates->firstWhere('candidate_id', $candAi->id);
+        $this->assertEquals(0.0, $aiCand['round_2']['quiz_score']);
+        $this->assertEquals('DISQUALIFIED', $aiCand['round_2']['status']);
+        $this->assertEquals(4, $aiCand['round_2']['tab_switches']);
+        $this->assertTrue($aiCand['round_2']['is_disqualified']);
+
+        // Check CSV export includes tab switches
+        $csvRes = $this->actingAs($this->tpoUser)
+            ->get("/api/v1/officer/drives/{$this->drive->id}/export-rounds");
+        $csvRes->assertStatus(200);
+        $csvContent = $csvRes->getContent();
+        $this->assertStringContainsString('R2: Tab Switches Detected', $csvContent);
+        $this->assertStringContainsString('R2: Integrity Status', $csvContent);
+        $this->assertStringContainsString('DISQUALIFIED (>3 Tabs)', $csvContent);
+    }
 }

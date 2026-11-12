@@ -248,17 +248,21 @@ export const studentsApi = {
       }>;
     }>(`/api/v1/students/me/drives/${driveId}/technical-quiz`),
 
-  submitTechnicalQuiz: (driveId: number, answers: Record<string, string>) =>
+  submitTechnicalQuiz: (driveId: number, answers: Record<string, string>, tab_switches?: number, disqualified?: boolean) =>
     apiClient.post<{
       success: boolean;
-      status: "CLEARED" | "FAILED";
+      status: "CLEARED" | "FAILED" | "DISQUALIFIED";
       score: number;
+      raw_score?: number;
+      is_disqualified?: boolean;
+      tab_switches?: number;
+      disqualification_reason?: string;
       correct_answers: number;
       total_questions: number;
       passing_cutoff: number;
       skill_breakdown: Record<string, number>;
       message: string;
-    }>(`/api/v1/students/me/drives/${driveId}/submit-quiz`, { answers }),
+    }>(`/api/v1/students/me/drives/${driveId}/submit-quiz`, { answers, tab_switches, disqualified }),
 
   // Milestone: Interactive Group Discussion Video Room & Multi-Candidate AI Evaluation
   getGdSession: (driveId: number) =>
@@ -356,4 +360,121 @@ export const studentsApi = {
         message: string;
       };
     }>(`/api/v1/students/me/drives/${driveId}/submit-gd`, data),
+
+  // Student Peer Discovery & Group Discussion Panel (Friends vs Random Matching)
+  getPeers: (search?: string, limit?: number) => {
+    const params = new URLSearchParams();
+    if (search) params.append("search", search);
+    if (limit) params.append("limit", String(limit));
+    const qs = params.toString() ? `?${params.toString()}` : "";
+    return apiClient.get<{
+      status: string;
+      peers: PeerStudent[];
+      total: number;
+    }>(`/api/v1/students/me/peers${qs}`);
+  },
+
+  getRandomPeers: (count: number = 3) =>
+    apiClient.get<{
+      status: string;
+      peers: PeerStudent[];
+    }>(`/api/v1/students/me/peers/random?count=${count}`),
+
+  configureGdPanel: (payload: {
+    mode: "FRIENDS" | "RANDOM";
+    peer_ids?: number[];
+    scenario_id?: number;
+    drive_id?: number;
+    topic_title?: string;
+  }) =>
+    apiClient.post<GdPanelConfigResponse>(
+      "/api/v1/students/me/group-discussions/panel",
+      payload
+    ),
+
+  submitGdEvaluation: (payload: {
+    scenario_id?: number;
+    drive_id?: number;
+    topic: string;
+    clarity_and_fluency: number;
+    active_listening: number;
+    body_language: number;
+    topic_knowledge: number;
+    creativity_and_perspectivity: number;
+    speaking_duration_seconds?: number;
+    speech_transcript?: string;
+    remarks?: string;
+  }) =>
+    apiClient.post<{
+      status: string;
+      message: string;
+      result: {
+        overall_score: number;
+        decision: "SELECTED" | "WAITLISTED";
+        grade_tier: string;
+        grade_label: string;
+        scores: Record<string, number>;
+        remarks: string;
+        strengths: string[];
+        areas_to_improve: string[];
+        session?: any;
+      };
+    }>("/api/v1/students/me/group-discussions/submit", payload),
 };
+
+export interface PeerStudent {
+  id: number;
+  name: string;
+  first_name: string;
+  last_name: string;
+  student_identifier: string;
+  branch: string;
+  graduation_year?: number;
+  email?: string;
+  avatar_url: string;
+  color: string;
+  role: string;
+  mode_badge?: string;
+  perspective?: string;
+  sample_points?: string[];
+}
+
+export interface DialogueTurn {
+  peerId: string;
+  name: string;
+  color?: string;
+  avatar?: string;
+  text: string;
+  duration?: number;
+  isUser?: boolean;
+}
+
+export interface GdPanelConfigResponse {
+  status: string;
+  mode: "FRIENDS" | "RANDOM";
+  panel_id: string;
+  panel_name: string;
+  topic: {
+    id?: number;
+    title: string;
+    description: string;
+    target_audience?: string;
+    key_evaluation_points?: string[];
+  };
+  candidate: {
+    id: number;
+    name: string;
+    branch: string;
+    student_identifier: string;
+    role: string;
+  };
+  peers: PeerStudent[];
+  dialogue_turns: DialogueTurn[];
+  rubrics: Array<{
+    key: string;
+    name: string;
+    max: number;
+    weight: string;
+    description: string;
+  }>;
+}

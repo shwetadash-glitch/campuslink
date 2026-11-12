@@ -20,6 +20,45 @@ export const FeedbackDisplay: React.FC<FeedbackDisplayProps> = ({
   onDraftRevision,
   isRevisionLoading = false,
 }) => {
+  const [viewMode, setViewMode] = React.useState<"MODEL" | "SIDE_BY_SIDE">("MODEL");
+  const [copied, setCopied] = React.useState<boolean>(false);
+  const [isSpeaking, setIsSpeaking] = React.useState<boolean>(false);
+
+  React.useEffect(() => {
+    return () => {
+      if (typeof window !== "undefined" && "speechSynthesis" in window) {
+        window.speechSynthesis.cancel();
+      }
+    };
+  }, []);
+
+  const handleCopy = () => {
+    if (typeof navigator !== "undefined" && navigator.clipboard) {
+      navigator.clipboard.writeText(feedback.improved_example_response || "");
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
+  const handleToggleSpeech = () => {
+    if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
+    if (isSpeaking) {
+      window.speechSynthesis.cancel();
+      setIsSpeaking(false);
+      return;
+    }
+    window.speechSynthesis.cancel();
+    const textToSpeak = feedback.improved_example_response || "";
+    if (!textToSpeak.trim()) return;
+    const utterance = new SpeechSynthesisUtterance(textToSpeak);
+    utterance.rate = 0.95; // professional executive conversational cadence
+    utterance.pitch = 1.0;
+    utterance.onend = () => setIsSpeaking(false);
+    utterance.onerror = () => setIsSpeaking(false);
+    window.speechSynthesis.speak(utterance);
+    setIsSpeaking(true);
+  };
+
   const {
     rubric_scores,
     delivery_scores,
@@ -478,19 +517,183 @@ export const FeedbackDisplay: React.FC<FeedbackDisplayProps> = ({
         </Card>
       </div>
 
-      {/* Suggested Rewrite */}
-      <Card className="p-6 bg-amber-50/50 border border-amber-200 rounded-xl shadow-sm">
-        <div className="flex items-center gap-2 mb-2">
-          <span className="text-lg">💡</span>
-          <h3 className="text-sm font-bold text-amber-950 uppercase tracking-wide">
-            AI-Suggested Revision (For Learning & Comparison Only)
-          </h3>
+      {/* Enhanced AI-Suggested Gold-Standard Revision */}
+      <Card className="p-6 bg-gradient-to-b from-amber-50/70 via-white to-amber-50/40 border border-amber-200 rounded-xl shadow-sm space-y-4">
+        {/* Header & Controls Toolbar */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-amber-200/70">
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <span className="text-lg">💡</span>
+              <h3 className="text-sm font-extrabold text-amber-950 uppercase tracking-wide">
+                AI-Suggested Professional Model Response
+              </h3>
+              <span className="px-2 py-0.5 rounded-full text-3xs font-extrabold bg-amber-200/90 text-amber-900 border border-amber-300">
+                HR-Aligned Gold Standard
+              </span>
+            </div>
+            <p className="text-2xs text-amber-800">
+              Illustrative high-impact rewrite demonstrating how to integrate the coaching feedback into authentic workplace dialogue.
+            </p>
+          </div>
+
+          {/* Action Toolbar */}
+          <div className="flex flex-wrap items-center gap-2 shrink-0">
+            {/* View Mode Toggle */}
+            <div className="inline-flex rounded-lg border border-amber-300/80 bg-white p-0.5 text-2xs font-bold text-slate-700 shadow-2xs">
+              <button
+                type="button"
+                onClick={() => setViewMode("MODEL")}
+                className={`px-2.5 py-1 rounded-md transition ${
+                  viewMode === "MODEL"
+                    ? "bg-amber-600 text-white shadow-2xs"
+                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
+                }`}
+              >
+                📄 Model Only
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode("SIDE_BY_SIDE")}
+                className={`px-2.5 py-1 rounded-md transition ${
+                  viewMode === "SIDE_BY_SIDE"
+                    ? "bg-amber-600 text-white shadow-2xs"
+                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
+                }`}
+              >
+                🔀 Side-by-Side Compare
+              </button>
+            </div>
+
+            {/* Audio Speech Player Button */}
+            <button
+              type="button"
+              onClick={handleToggleSpeech}
+              className={`px-3 py-1.5 rounded-lg text-2xs font-bold border transition flex items-center gap-1.5 shadow-2xs ${
+                isSpeaking
+                  ? "bg-rose-50 text-rose-700 border-rose-300 hover:bg-rose-100"
+                  : "bg-white text-campusblue-700 border-campusblue-200 hover:bg-campusblue-50"
+              }`}
+            >
+              <span>{isSpeaking ? "⏹ Stop Audio" : "🔊 Listen (140 WPM)"}</span>
+            </button>
+
+            {/* Copy Button */}
+            <button
+              type="button"
+              onClick={handleCopy}
+              className="px-3 py-1.5 rounded-lg text-2xs font-bold border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 transition flex items-center gap-1.5 shadow-2xs"
+            >
+              <span>{copied ? "✓ Copied!" : "📋 Copy"}</span>
+            </button>
+          </div>
         </div>
-        <p className="text-2xs text-amber-800 mb-3 italic">
-          This is an illustrative rewrite demonstrating how the feedback can be applied. It is not your original submission.
-        </p>
-        <div className="p-4 bg-white rounded-lg border border-amber-200/80 text-xs text-slate-800 leading-relaxed font-serif whitespace-pre-wrap">
-          {feedback.improved_example_response}
+
+        {/* Content View: Model Only vs Side-by-Side */}
+        {viewMode === "MODEL" ? (
+          <div className="p-5 bg-white rounded-xl border border-amber-200/90 shadow-2xs space-y-3">
+            {feedback.improved_example_response ? (
+              feedback.improved_example_response
+                .split(/\n\s*\n/)
+                .filter((p) => p.trim() !== "")
+                .map((paragraph, idx) => (
+                  <p key={idx} className="text-xs text-slate-800 leading-relaxed font-serif">
+                    {paragraph.trim()}
+                  </p>
+                ))
+            ) : (
+              <p className="text-xs text-slate-500 italic">No suggested response available.</p>
+            )}
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {/* Student's Original Draft */}
+            <div className="p-4 bg-slate-50/80 rounded-xl border border-slate-200 shadow-2xs flex flex-col justify-between">
+              <div>
+                <div className="flex items-center justify-between pb-2 mb-2 border-b border-slate-200 text-3xs font-extrabold uppercase tracking-wider text-slate-500">
+                  <span>Your Practice Submission</span>
+                  <span>{studentResponseText ? studentResponseText.trim().split(/\s+/).length : 0} words</span>
+                </div>
+                <div className="text-xs text-slate-700 leading-relaxed font-serif whitespace-pre-wrap max-h-72 overflow-y-auto">
+                  {studentResponseText || "No response text captured."}
+                </div>
+              </div>
+              <div className="mt-3 pt-2 border-t border-slate-200/80 text-3xs text-slate-500 italic">
+                Initial candidate response prior to coaching refinement.
+              </div>
+            </div>
+
+            {/* AI Elevated Model */}
+            <div className="p-4 bg-amber-50/40 rounded-xl border border-amber-200/90 shadow-2xs flex flex-col justify-between">
+              <div>
+                <div className="flex items-center justify-between pb-2 mb-2 border-b border-amber-200 text-3xs font-extrabold uppercase tracking-wider text-amber-900">
+                  <span>Elevated Model Response</span>
+                  <span>
+                    {feedback.improved_example_response
+                      ? feedback.improved_example_response.trim().split(/\s+/).length
+                      : 0}{" "}
+                    words
+                  </span>
+                </div>
+                <div className="text-xs text-slate-800 leading-relaxed font-serif space-y-2.5 max-h-72 overflow-y-auto">
+                  {feedback.improved_example_response ? (
+                    feedback.improved_example_response
+                      .split(/\n\s*\n/)
+                      .filter((p) => p.trim() !== "")
+                      .map((paragraph, idx) => (
+                        <p key={idx}>{paragraph.trim()}</p>
+                      ))
+                  ) : (
+                    <p className="italic text-slate-500">No model response available.</p>
+                  )}
+                </div>
+              </div>
+              <div className="mt-3 pt-2 border-t border-amber-200/80 text-3xs text-amber-800 font-semibold flex items-center justify-between">
+                <span>Refined with executive poise & structured signposting</span>
+                <span>Tier: {feedback.grade_label || "Proficient"}</span>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Reliability & HR Tactical Framework Pill Box */}
+        <div className="pt-2">
+          <span className="text-3xs uppercase tracking-wider font-extrabold text-amber-900 block mb-2">
+            Why This Response Is Reliable in HR Connect Sessions:
+          </span>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
+            <div className="p-2.5 rounded-lg bg-white border border-amber-200/70 shadow-2xs text-2xs space-y-0.5">
+              <span className="font-bold text-amber-950 flex items-center gap-1">
+                <span>🤝</span> Value-First Stance
+              </span>
+              <p className="text-3xs text-slate-600 leading-tight">
+                Emphasizes candidate contribution and mutual cultural fit before compensation terms.
+              </p>
+            </div>
+            <div className="p-2.5 rounded-lg bg-white border border-amber-200/70 shadow-2xs text-2xs space-y-0.5">
+              <span className="font-bold text-amber-950 flex items-center gap-1">
+                <span>📊</span> Total Rewards Scope
+              </span>
+              <p className="text-3xs text-slate-600 leading-tight">
+                Evaluates complete compensation (health, 401k/retirement, variable bonuses, equity).
+              </p>
+            </div>
+            <div className="p-2.5 rounded-lg bg-white border border-amber-200/70 shadow-2xs text-2xs space-y-0.5">
+              <span className="font-bold text-amber-950 flex items-center gap-1">
+                <span>🎯</span> Market Benchmarking
+              </span>
+              <p className="text-3xs text-slate-600 leading-tight">
+                References objective industry standards and role trajectory without ultimatums.
+              </p>
+            </div>
+            <div className="p-2.5 rounded-lg bg-white border border-amber-200/70 shadow-2xs text-2xs space-y-0.5">
+              <span className="font-bold text-amber-950 flex items-center gap-1">
+                <span>💬</span> Collaborative Close
+              </span>
+              <p className="text-3xs text-slate-600 leading-tight">
+                Concludes with open dialogue inviting the HR partner to share salary bands and growth paths.
+              </p>
+            </div>
+          </div>
         </div>
       </Card>
 

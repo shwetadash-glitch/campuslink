@@ -860,4 +860,95 @@ class Milestone7CommunicationCoachTest extends TestCase
         $this->assertNull($sess->evaluation_claim_token);
         $this->assertNull($sess->feedback);
     }
+
+    public function test_evaluation_persists_safely_when_ai_returns_structured_arrays_for_text_fields(): void
+    {
+        $token = $this->studentUser->createToken('test')->plainTextToken;
+
+        $aiManagerMock = $this->createMock(AiManager::class);
+        $aiManagerMock->method('getProviderName')->willReturn('ollama');
+        $aiManagerMock->method('getModelName')->willReturn('llama3.2');
+        $aiManagerMock->method('generate')->willReturn([
+            'rubric_scores' => [
+                'clarity' => 88.0,
+                'relevance' => 92.0,
+                'coherence_organization' => 85.0,
+                'grammar' => 90.0,
+                'professional_language' => 87.0,
+                'conciseness' => 84.0,
+                'audience_adaptation' => 89.0,
+            ],
+            'factual_technical_evaluation' => [
+                'guidance_alignment_status' => 'SUPPORTED_BY_GUIDANCE',
+                'factual_concerns' => [
+                    ['concern' => 'Ensure mobile client handles backwards compatibility gracefully.'],
+                ],
+                'guidance_comparison_notes' => [
+                    'Detailed note: The candidate addressed the schema migration window.',
+                    'Follow-up: Confirmed deprecation schedule with engineering team.',
+                ],
+            ],
+            'strengths' => [
+                'Clear articulation of breaking changes and impact.',
+                'Proactive suggestion of v2 versioned endpoints.',
+            ],
+            'areas_to_improve' => [
+                'Replace placeholder tokens before sending to stakeholders.',
+            ],
+            'grounded_explanations' => [
+                [
+                    'excerpt' => 'we need to request a breaking schema change to this endpoint',
+                    'feedback' => 'Direct and clear problem statement.',
+                    'dimension' => 'clarity',
+                ],
+            ],
+            'actionable_suggestions' => [
+                'Attach concrete schema RFC link rather than placeholder text.',
+            ],
+            // Simulated nested array/object returned by LLMs for structured emails:
+            'improved_example_response' => [
+                'subject' => 'Request: Planned User Identity Schema Change for Mobile Initiative',
+                'greeting' => 'Hi Team,',
+                'body' => 'We are preparing for the upcoming mobile auth release and would like to coordinate a non-breaking versioned migration for the User Identity endpoint.',
+                'closing' => 'Best regards, Engineering Team',
+            ],
+            'recommended_next_exercise' => [
+                'category' => 'PROFESSIONAL_EMAIL',
+                'scenario_id' => 12,
+                'title' => 'Follow-up Revision',
+                'objective' => 'Practice resolving placeholder tags.',
+            ],
+        ]);
+
+        $this->app->instance(AiManager::class, $aiManagerMock);
+
+        $sess = CommunicationPracticeSession::create([
+            'student_id' => $this->student->id,
+            'scenario_id' => $this->scenarioEmail->id,
+            'category' => $this->scenarioEmail->category,
+            'status' => 'IN_PROGRESS',
+        ]);
+
+        $text = "Subject: Request: Breaking schema change to User Identity endpoint for Mobile Initiative. Hi team, we need to request a breaking schema change to support mobile clients without extra round trips.";
+
+        $res = $this->withHeader('Authorization', "Bearer {$token}")
+            ->postJson("/api/v1/students/me/communication-coach/sessions/{$sess->id}/submit", [
+                'response_text' => $text,
+            ]);
+
+        $res->assertStatus(200)
+            ->assertJsonStructure([
+                'message',
+                'session',
+                'feedback' => [
+                    'id',
+                    'overall_score',
+                    'improved_example_response',
+                ],
+            ]);
+
+        $this->assertIsString($res->json('feedback.improved_example_response'));
+        $this->assertStringContainsString('Subject: Request: Planned User Identity', $res->json('feedback.improved_example_response'));
+        $this->assertStringContainsString('Best regards', $res->json('feedback.improved_example_response'));
+    }
 }

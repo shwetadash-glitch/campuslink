@@ -110,14 +110,46 @@ export interface AssessmentResult {
     pass_percentage: number;
     submitted_at?: string;
     proctoring_flags_count: number;
+    tab_switches?: number;
+    is_disqualified?: boolean;
+    disqualification_reason?: string;
     evaluation_summary?: {
         total_score: number;
         earned_percentage: number;
         passed: boolean;
+        tab_switches?: number;
+        is_disqualified?: boolean;
+        disqualification_reason?: string;
         categories: Record<string, { earned: number; possible: number }>;
         improvement_roadmap?: ImprovementRoadmap;
     };
     improvement_roadmap?: ImprovementRoadmap;
+}
+
+export interface AssessmentSubmissionItem {
+    id: number;
+    assessment_id: number;
+    student_id: number;
+    attempt_number: number;
+    status: string;
+    total_score: number | null;
+    passed: boolean | null;
+    tab_switches: number;
+    is_disqualified: boolean;
+    disqualification_reason?: string;
+    proctoring_flags_count: number;
+    started_at: string;
+    submitted_at?: string;
+    student?: {
+        id: number;
+        roll_number?: string;
+        branch?: string;
+        user?: {
+            id: number;
+            name: string;
+            email: string;
+        };
+    };
 }
 
 export interface OfficerAssessmentItem {
@@ -218,8 +250,8 @@ export const assessmentsApi = {
         });
     },
 
-    submitSession: async (sessionId: number) => {
-        return await apiClient.post(`/api/v1/students/me/assessments/sessions/${sessionId}/submit`);
+    submitSession: async (sessionId: number, payload?: { tab_switches?: number; disqualified?: boolean }) => {
+        return await apiClient.post(`/api/v1/students/me/assessments/sessions/${sessionId}/submit`, payload || {});
     },
 
     sendTelemetry: async (sessionId: number, eventType: string, eventData?: any) => {
@@ -314,5 +346,17 @@ export const assessmentsApi = {
 
     approveQuestion: async (questionId: number, overrides?: any) => {
         return await apiClient.post(`/api/v1/officer/assessments/questions/${questionId}/approve`, overrides || {});
+    },
+
+    getAssessmentSubmissions: async (assessmentId: number): Promise<{
+        assessment: { id: number; title: string; code: string; total_marks: number; pass_percentage: number };
+        sessions: AssessmentSubmissionItem[];
+    }> => {
+        const res = await apiClient.get<any>(`/api/v1/officer/assessments/${assessmentId}/submissions`);
+        const rawSessions = res.sessions?.data || res.sessions || [];
+        return {
+            assessment: res.assessment || { id: assessmentId, title: '', code: '', total_marks: 100, pass_percentage: 60 },
+            sessions: Array.isArray(rawSessions) ? rawSessions : [],
+        };
     },
 };

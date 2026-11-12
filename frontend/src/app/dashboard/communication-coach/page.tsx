@@ -13,6 +13,9 @@ import {
   CommunicationCategoryInfo,
   CommunicationScenarioItem,
 } from "@/services/communicationCoachApi";
+import { GroupDiscussionSetupModal } from "@/components/gd/GroupDiscussionSetupModal";
+import { GroupDiscussionVideoRoomModal } from "@/components/gd/GroupDiscussionVideoRoomModal";
+import { GdPanelConfigResponse } from "@/services/studentsApi";
 
 export default function CommunicationCoachHubPage() {
   const router = useRouter();
@@ -26,6 +29,11 @@ export default function CommunicationCoachHubPage() {
   const [generatingEmail, setGeneratingEmail] = useState<boolean>(false);
   const [selectedDomain, setSelectedDomain] = useState<string>("All Domains");
   const [selectedDifficulty, setSelectedDifficulty] = useState<string>("INTERMEDIATE");
+
+  // Group Discussion interactive panel states
+  const [setupModalScenario, setSetupModalScenario] = useState<CommunicationScenarioItem | null>(null);
+  const [activeGdPanelData, setActiveGdPanelData] = useState<GdPanelConfigResponse | null>(null);
+  const [isGdRoomOpen, setIsGdRoomOpen] = useState<boolean>(false);
 
   const emailDomains = [
     "All Domains",
@@ -75,6 +83,15 @@ export default function CommunicationCoachHubPage() {
       setError(err?.message || "Failed to generate dynamic email challenge.");
       setGeneratingEmail(false);
     }
+  };
+
+  const handleOpenGdSetup = (scen: CommunicationScenarioItem) => {
+    setSetupModalScenario(scen);
+  };
+
+  const handleGdPanelReady = (panelConfig: GdPanelConfigResponse) => {
+    setActiveGdPanelData(panelConfig);
+    setIsGdRoomOpen(true);
   };
 
   const filteredScenarios =
@@ -244,6 +261,38 @@ export default function CommunicationCoachHubPage() {
         </div>
       </div>
 
+      {/* Group Discussion Collaborative Banner */}
+      {selectedCategory === "GROUP_DISCUSSION" && (
+        <div className="mb-6 p-4 rounded-xl bg-gradient-to-r from-indigo-900 via-purple-900 to-campusblue-900 text-white border border-indigo-700/60 shadow-md flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <span className="text-2xs uppercase tracking-widest text-indigo-200 font-extrabold">
+                👥 Interactive Collaborative Discussions
+              </span>
+              <span className="px-2 py-0.5 rounded-full bg-indigo-500/30 text-indigo-200 text-3xs font-extrabold border border-indigo-400/40">
+                Friends & Random Students
+              </span>
+            </div>
+            <h4 className="text-sm font-black">Add Your Friends or Get Placed with Random Students</h4>
+            <p className="text-xs text-indigo-100 max-w-xl leading-relaxed">
+              Experience authentic campus recruitment group discussions. Search and invite classmates to your panel, or let the AI placement engine match you with random students from other engineering departments.
+            </p>
+          </div>
+          <Button
+            onClick={() =>
+              handleOpenGdSetup(
+                filteredScenarios[0] ||
+                  scenarios.find((s) => s.category === "GROUP_DISCUSSION") ||
+                  scenarios[0]
+              )
+            }
+            className="bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-xs px-5 py-2.5 shrink-0 shadow-lg"
+          >
+            ⚡ Configure Panel & Start
+          </Button>
+        </div>
+      )}
+
       {/* Scenarios Catalog */}
       <div id="practice-scenarios" className="space-y-4">
         <div className="flex justify-between items-center">
@@ -285,16 +334,71 @@ export default function CommunicationCoachHubPage() {
                   <span className="bg-slate-100 px-2 py-0.5 rounded font-medium">{scen.recommended_min_words}-{scen.recommended_max_words} words</span>
                 </div>
 
-                <Link href={`/dashboard/communication-coach/practice/${scen.id}`}>
-                  <Button className="w-full bg-campusblue-700 hover:bg-campusblue-800 text-white text-xs">
-                    Start Practice Exercise →
-                  </Button>
-                </Link>
+                {scen.category === "GROUP_DISCUSSION" ? (
+                  <div className="space-y-2">
+                    <Button
+                      onClick={() => handleOpenGdSetup(scen)}
+                      className="w-full bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-black flex items-center justify-center gap-1.5 shadow-md shadow-indigo-600/20"
+                    >
+                      <span>👥🎙️</span>
+                      <span>Start Group Discussion (Friends or Random) →</span>
+                    </Button>
+                    <div className="flex justify-between items-center text-3xs text-slate-500 pt-0.5 px-1">
+                      <span className="flex items-center gap-1 text-indigo-700 font-bold">
+                        <span>✓</span>
+                        <span>Add Friends or Auto-Match Random</span>
+                      </span>
+                      <Link
+                        href={`/dashboard/communication-coach/practice/${scen.id}`}
+                        className="text-slate-500 hover:text-slate-900 underline font-semibold"
+                      >
+                        Solo Practice →
+                      </Link>
+                    </div>
+                  </div>
+                ) : (
+                  <Link href={`/dashboard/communication-coach/practice/${scen.id}`}>
+                    <Button className="w-full bg-campusblue-700 hover:bg-campusblue-800 text-white text-xs font-bold">
+                      Start Practice Exercise →
+                    </Button>
+                  </Link>
+                )}
               </Card>
             ))}
           </div>
         )}
       </div>
+
+      {/* Group Discussion Setup Modal (Friends vs Random Students) */}
+      {setupModalScenario && (
+        <GroupDiscussionSetupModal
+          isOpen={Boolean(setupModalScenario)}
+          onClose={() => setSetupModalScenario(null)}
+          scenarioId={setupModalScenario.id}
+          scenarioTitle={setupModalScenario.title}
+          scenarioDescription={setupModalScenario.prompt_text}
+          difficulty={setupModalScenario.difficulty}
+          onPanelReady={handleGdPanelReady}
+        />
+      )}
+
+      {/* Group Discussion Live Video Room */}
+      {isGdRoomOpen && (
+        <GroupDiscussionVideoRoomModal
+          isOpen={isGdRoomOpen}
+          scenarioId={setupModalScenario?.id}
+          scenarioTitle={setupModalScenario?.title}
+          panelData={activeGdPanelData}
+          onClose={() => {
+            setIsGdRoomOpen(false);
+            setActiveGdPanelData(null);
+            setSetupModalScenario(null);
+          }}
+          onSuccess={() => {
+            loadData();
+          }}
+        />
+      )}
     </AppLayout>
   );
 }

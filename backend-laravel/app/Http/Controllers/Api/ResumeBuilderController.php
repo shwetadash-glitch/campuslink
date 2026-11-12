@@ -12,6 +12,7 @@ use App\Services\Resume\ResumeContentGeneratorService;
 use App\Services\Resume\JobDescriptionAnalyzerService;
 use App\Services\Resume\ResumeQualityAnalysisService;
 use App\Services\Resume\ResumePdfExportService;
+use App\Services\Resume\ResumeDocxExportService;
 use Illuminate\Support\Facades\Storage;
 use Carbon\Carbon;
 
@@ -22,19 +23,22 @@ class ResumeBuilderController extends Controller
     protected JobDescriptionAnalyzerService $jobAnalyzer;
     protected ResumeQualityAnalysisService $qualityAnalyzer;
     protected ResumePdfExportService $pdfExporter;
+    protected ResumeDocxExportService $docxExporter;
 
     public function __construct(
         ResumeProfileAggregatorService $profileAggregator,
         ResumeContentGeneratorService $contentGenerator,
         JobDescriptionAnalyzerService $jobAnalyzer,
         ResumeQualityAnalysisService $qualityAnalyzer,
-        ResumePdfExportService $pdfExporter
+        ResumePdfExportService $pdfExporter,
+        ResumeDocxExportService $docxExporter
     ) {
         $this->profileAggregator = $profileAggregator;
         $this->contentGenerator = $contentGenerator;
         $this->jobAnalyzer = $jobAnalyzer;
         $this->qualityAnalyzer = $qualityAnalyzer;
         $this->pdfExporter = $pdfExporter;
+        $this->docxExporter = $docxExporter;
     }
 
     private function getStudent(Request $request): Student
@@ -391,6 +395,31 @@ class ResumeBuilderController extends Controller
     }
 
     /**
+     * AI-Powered Work Experience Description Enhancement into Action-Verb Bullet Points.
+     */
+    public function improveExperience(Request $request, $id)
+    {
+        $student = $this->getStudent($request);
+        $resume = $this->findStudentResume($student, (int) $id);
+
+        $validated = $request->validate([
+            'experience' => 'required|array',
+            'experience.job_title' => 'required|string',
+            'experience.company' => 'required|string',
+            'experience.description' => 'nullable|string',
+            'experience.technologies' => 'nullable|string',
+        ]);
+
+        $result = $this->contentGenerator->improveExperienceDescription(
+            $validated['experience'],
+            $resume->target_role,
+            $resume->job_description_raw
+        );
+
+        return response()->json($result);
+    }
+
+    /**
      * AI-Powered Project Description Enhancement into Action-Verb Bullet Points.
      */
     public function improveProject(Request $request, $id)
@@ -551,6 +580,64 @@ class ResumeBuilderController extends Controller
     }
 
     /**
+     * Export resume to DOCX (requires student approval).
+     */
+    public function exportDocx(Request $request, $id)
+    {
+        $student = $this->getStudent($request);
+        $resume = $this->findStudentResume($student, (int) $id);
+
+        try {
+            $docxPath = $this->docxExporter->exportDocx($resume, true);
+        } catch (\InvalidArgumentException $e) {
+            return response()->json([
+                'status' => 'error',
+                'code' => 'APPROVAL_REQUIRED',
+                'message' => $e->getMessage(),
+            ], 422);
+        }
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'DOCX generated successfully.',
+            'docx_path' => $docxPath,
+            'download_url' => url("/api/v1/students/me/resumes/{$resume->id}/download-docx"),
+        ]);
+    }
+
+    /**
+     * Securely download generated resume DOCX.
+     */
+    public function downloadDocx(Request $request, $id)
+    {
+        $student = $this->getStudent($request);
+        $resume = $this->findStudentResume($student, (int) $id);
+
+        $docxPath = "resumes/resume_{$resume->id}.docx";
+
+        if (!Storage::disk('local')->exists($docxPath)) {
+            // Auto-generate if approved
+            if ($resume->isApproved()) {
+                $this->docxExporter->exportDocx($resume, false);
+            } else {
+                return response()->json([
+                    'status' => 'error',
+                    'code' => 'APPROVAL_REQUIRED',
+                    'message' => 'Resume must be reviewed and approved by student before DOCX export or download.',
+                ], 422);
+            }
+        }
+
+        $filePath = Storage::disk('local')->path($docxPath);
+        $cleanTitle = preg_replace('/[^A-Za-z0-9_-]/', '_', $resume->title);
+        $filename = "{$cleanTitle}.docx";
+
+        return response()->download($filePath, $filename, [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        ]);
+    }
+
+    /**
      * Authorized officer / recruiter download of student resume.
      * Enforces strict placement relationship between recruiter company and candidate.
      */
@@ -640,6 +727,88 @@ class ResumeBuilderController extends Controller
         $filePath = Storage::disk('local')->path($resume->pdf_path);
         return response()->download($filePath, "Resume_Candidate_{$studentId}.pdf", [
             'Content-Type' => 'application/pdf',
+        ]);
+    }
+
+    /**
+     * Authorized officer / recruiter download of student resume in DOCX format.
+     */
+    public function authorizedDownloadDocx(Request $request, $studentId, $id)
+    {
+        $user = $request->user();
+        if (!$user) {
+            abort(401, 'Unauthenticated');
+        }
+
+        $resume = Resume::where('id', $id)
+            ->where('student_id', $studentId)
+            ->firstOrFail();
+
+        $userRole = $user->role instanceof \BackedEnum ? $user->role->value : (string) $user->role;
+
+        // Recruiter access requires active evaluation relationship
+        if ($userRole === 'RECRUITER') {
+            $recruiter = $user->recruiterProfile;
+            if (!$recruiter || !$recruiter->company_id) {
+                return response()->json([
+                    'status' => 'error',
+                    'code' => 'UNAUTHORIZED_RECRUITER_ACCESS',
+                    'message' => 'No active company profile found for this recruiter account.',
+                ], 403);
+            }
+
+            $companyId = $recruiter->company_id;
+
+            $hasJobApp = \App\Models\Application::where('student_id', $studentId)
+                ->whereHas('job', function ($q) use ($companyId) {
+                    $q->where('company_id', $companyId);
+                })->exists();
+
+            $hasDriveCand = \App\Models\DriveCandidate::where('student_id', $studentId)
+                ->whereHas('placementDrive', function ($q) use ($companyId) {
+                    $q->where('company_id', $companyId);
+                })->exists();
+
+            $hasOffer = \App\Models\Offer::where('student_id', $studentId)
+                ->where('company_id', $companyId)
+                ->exists();
+
+            $isTailoredJob = $resume->job_id && \App\Models\Job::where('id', $resume->job_id)
+                ->where('company_id', $companyId)
+                ->exists();
+
+            if (!$hasJobApp && !$hasDriveCand && !$hasOffer && !$isTailoredJob) {
+                return response()->json([
+                    'status' => 'error',
+                    'code' => 'UNAUTHORIZED_RECRUITER_ACCESS',
+                    'message' => 'You are not authorized to evaluate this candidate. The student has not applied to your company drives or jobs.',
+                ], 403);
+            }
+        } elseif (!in_array($userRole, ['SUPER_ADMIN', 'PLACEMENT_OFFICER'])) {
+            return response()->json([
+                'status' => 'error',
+                'code' => 'FORBIDDEN',
+                'message' => 'Unauthorized document access.',
+            ], 403);
+        }
+
+        // Candidate resume must be approved
+        if (!$resume->isApproved()) {
+            return response()->json([
+                'status' => 'error',
+                'code' => 'DOCX_NOT_APPROVED',
+                'message' => 'Official verified resume DOCX is not currently approved for this candidate.',
+            ], 404);
+        }
+
+        $docxPath = "resumes/resume_{$resume->id}.docx";
+        if (!Storage::disk('local')->exists($docxPath)) {
+            $this->docxExporter->exportDocx($resume, false);
+        }
+
+        $filePath = Storage::disk('local')->path($docxPath);
+        return response()->download($filePath, "Resume_Candidate_{$studentId}.docx", [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
         ]);
     }
 }

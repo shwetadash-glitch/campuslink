@@ -88,6 +88,12 @@ Route::prefix('v1')->group(function () {
             Route::post('/me/drives/{driveId}/submit-quiz', [StudentPlacementJourneyController::class, 'submitQuiz']);
             Route::get('/me/drives/{driveId}/gd-session', [StudentPlacementJourneyController::class, 'getGdSession']);
             Route::post('/me/drives/{driveId}/submit-gd', [StudentPlacementJourneyController::class, 'submitGdSession']);
+
+            // Student Peer Discovery & Group Discussion Panel (Friends or Random Students)
+            Route::get('/me/peers', [\App\Http\Controllers\Api\StudentPeerController::class, 'index']);
+            Route::get('/me/peers/random', [\App\Http\Controllers\Api\StudentPeerController::class, 'randomPeers']);
+            Route::post('/me/group-discussions/panel', [\App\Http\Controllers\Api\StudentPeerController::class, 'configurePanel']);
+            Route::post('/me/group-discussions/submit', [\App\Http\Controllers\Api\StudentPeerController::class, 'submitEvaluation']);
             Route::get('/me/offers', [StudentPlacementJourneyController::class, 'offers']);
             Route::get('/me/offers/{offerId}', [StudentPlacementJourneyController::class, 'showOffer']);
             Route::get('/me/offers/{offerId}/letter', [StudentPlacementJourneyController::class, 'downloadOfferLetter']);
@@ -115,11 +121,14 @@ Route::prefix('v1')->group(function () {
                 Route::post('/{id}/compare', [\App\Http\Controllers\Api\ResumeBuilderController::class, 'compareVersions']);
                 Route::post('/{id}/generate-summary', [\App\Http\Controllers\Api\ResumeBuilderController::class, 'generateSummary']);
                 Route::post('/{id}/improve-project', [\App\Http\Controllers\Api\ResumeBuilderController::class, 'improveProject']);
+                Route::post('/{id}/improve-experience', [\App\Http\Controllers\Api\ResumeBuilderController::class, 'improveExperience']);
                 Route::post('/{id}/analyze-job', [\App\Http\Controllers\Api\ResumeBuilderController::class, 'analyzeJobDescription']);
                 Route::post('/{id}/analyze-quality', [\App\Http\Controllers\Api\ResumeBuilderController::class, 'analyzeQuality']);
                 Route::post('/{id}/approve', [\App\Http\Controllers\Api\ResumeBuilderController::class, 'approve']);
                 Route::post('/{id}/export-pdf', [\App\Http\Controllers\Api\ResumeBuilderController::class, 'exportPdf']);
                 Route::get('/{id}/download-pdf', [\App\Http\Controllers\Api\ResumeBuilderController::class, 'downloadPdf']);
+                Route::post('/{id}/export-docx', [\App\Http\Controllers\Api\ResumeBuilderController::class, 'exportDocx']);
+                Route::get('/{id}/download-docx', [\App\Http\Controllers\Api\ResumeBuilderController::class, 'downloadDocx']);
             });
 
             // Milestone 5: Candidate Assessment Sessions
@@ -355,10 +364,16 @@ Route::prefix('v1')->group(function () {
         });
 
         // Milestone 4: Authorized Officer / Recruiter Resume Document Access
-        Route::middleware('role:SUPER_ADMIN,PLACEMENT_OFFICER,RECRUITER')->get(
-            '/resumes/students/{studentId}/{id}/download-pdf',
-            [\App\Http\Controllers\Api\ResumeBuilderController::class, 'authorizedDownload']
-        );
+        Route::middleware('role:SUPER_ADMIN,PLACEMENT_OFFICER,RECRUITER')->group(function () {
+            Route::get(
+                '/resumes/students/{studentId}/{id}/download-pdf',
+                [\App\Http\Controllers\Api\ResumeBuilderController::class, 'authorizedDownload']
+            );
+            Route::get(
+                '/resumes/students/{studentId}/{id}/download-docx',
+                [\App\Http\Controllers\Api\ResumeBuilderController::class, 'authorizedDownloadDocx']
+            );
+        });
     });
 });
 

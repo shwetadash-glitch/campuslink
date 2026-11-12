@@ -243,6 +243,17 @@ export default function ShortlistingPage() {
     }
   };
 
+  // Export CSV
+  const handleDownloadCsv = async () => {
+    const driveId = parseInt(targetDrive, 10);
+    if (!driveId || isNaN(driveId)) return;
+    try {
+      await adminApi.exportRoundsCsv(driveId);
+    } catch (err: any) {
+      setError(err?.message || "Failed to download rounds CSV report.");
+    }
+  };
+
   // Check if current drive has core branch focus
   const currentDriveTrack = driveInfo?.track || "Software & Technology Track";
   const isCivilDrive = currentDriveTrack.includes("Civil");
@@ -255,7 +266,7 @@ export default function ShortlistingPage() {
         title="AI Shortlisting & Branch Placement Console" 
         description="Dynamic candidate ranking, canonical branch segregation, and domain-tailored competency benchmarks for Core and Tech placements." 
         actionLabel="Export Shortlist (.csv / Excel)"
-        onAction={() => window.open(`/api/v1/officer/drives/${targetDrive}/export-rounds`, "_blank")}
+        onAction={handleDownloadCsv}
       />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
         
@@ -380,7 +391,7 @@ export default function ShortlistingPage() {
             </Link>
             <button
               type="button"
-              onClick={() => window.open(`/api/v1/officer/drives/${targetDrive}/export-rounds`, "_blank")}
+              onClick={handleDownloadCsv}
               className="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 bg-white/10 hover:bg-white/20 text-white font-bold text-xs rounded-lg transition border border-white/20"
             >
               <span>📥</span> CSV

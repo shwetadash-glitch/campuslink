@@ -161,10 +161,14 @@ function RoundsManagerContent() {
   };
 
   // Export CSV
-  const handleDownloadCsv = () => {
+  const handleDownloadCsv = async () => {
     const driveId = parseInt(targetDrive, 10);
-    const url = `/api/v1/officer/drives/${driveId}/export-rounds`;
-    window.open(url, "_blank");
+    if (!driveId || isNaN(driveId)) return;
+    try {
+      await adminApi.exportRoundsCsv(driveId);
+    } catch (err: any) {
+      setError(err?.message || "Failed to download rounds CSV report.");
+    }
   };
 
   if (loading) {
@@ -567,6 +571,7 @@ function RoundsManagerContent() {
                       <th className="px-4 py-3 text-center">R1 Fit</th>
                       <th className="px-4 py-3 text-center">Dispatch Status</th>
                       <th className="px-4 py-3 text-center">Quiz Score %</th>
+                      <th className="px-4 py-3 text-center">Tab Switches</th>
                       <th className="px-4 py-3 text-left">Skill Breakdown</th>
                       <th className="px-4 py-3 text-center">Quiz Status</th>
                       <th className="px-4 py-3 text-center">Action</th>
@@ -604,11 +609,43 @@ function RoundsManagerContent() {
                           </td>
                           <td className="px-4 py-3 text-center">
                             {r2.quiz_score !== null && r2.quiz_score !== undefined ? (
-                              <span className={`text-sm font-black ${isCleared ? "text-emerald-700" : "text-rose-700"}`}>
-                                {r2.quiz_score.toFixed(1)}%
-                              </span>
+                              <div>
+                                <span className={`text-sm font-black ${
+                                  r2.is_disqualified || (r2.tab_switches ?? 0) > 3 || r2.status === "DISQUALIFIED"
+                                    ? "text-rose-700"
+                                    : isCleared
+                                    ? "text-emerald-700"
+                                    : "text-rose-700"
+                                }`}>
+                                  {r2.quiz_score.toFixed(1)}%
+                                </span>
+                                {(r2.is_disqualified || (r2.tab_switches ?? 0) > 3 || r2.status === "DISQUALIFIED") && (
+                                  <div className="text-[9px] text-rose-600 font-bold uppercase tracking-wider">
+                                    Disqualified
+                                  </div>
+                                )}
+                              </div>
                             ) : (
                               <span className="text-xs text-slate-400 font-mono">Pending</span>
+                            )}
+                          </td>
+                          <td className="px-4 py-3 text-center">
+                            {isSubmitted ? (
+                              r2.is_disqualified || (r2.tab_switches ?? 0) > 3 || r2.status === "DISQUALIFIED" ? (
+                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black bg-rose-100 text-rose-800 border border-rose-300">
+                                  <span>🚨</span> {r2.tab_switches ?? 4} Tabs (Disqualified)
+                                </span>
+                              ) : (r2.tab_switches ?? 0) > 0 ? (
+                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300">
+                                  <span>⚠️</span> {r2.tab_switches} Tabs
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-300">
+                                  <span>✓</span> 0 Tabs
+                                </span>
+                              )
+                            ) : (
+                              <span className="text-xs text-slate-300 font-mono">—</span>
                             )}
                           </td>
                           <td className="px-4 py-3">
@@ -626,12 +663,21 @@ function RoundsManagerContent() {
                           </td>
                           <td className="px-4 py-3 text-center">
                             <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
-                              isCleared ? "bg-emerald-100 text-emerald-800 border border-emerald-300" :
-                              r2.status === "FAILED" ? "bg-rose-100 text-rose-800 border border-rose-300" :
-                              r2.status === "DISPATCHED_PENDING" ? "bg-amber-100 text-amber-800 border border-amber-300" :
-                              "bg-slate-100 text-slate-700 border border-slate-300"
+                              r2.is_disqualified || (r2.tab_switches ?? 0) > 3 || r2.status === "DISQUALIFIED"
+                                ? "bg-rose-100 text-rose-800 border border-rose-300"
+                                : isCleared
+                                ? "bg-emerald-100 text-emerald-800 border border-emerald-300"
+                                : r2.status === "FAILED"
+                                ? "bg-rose-100 text-rose-800 border border-rose-300"
+                                : r2.status === "DISPATCHED_PENDING"
+                                ? "bg-amber-100 text-amber-800 border border-amber-300"
+                                : "bg-slate-100 text-slate-700 border border-slate-300"
                             }`}>
-                              {r2.status === "DISPATCHED_PENDING" ? "PENDING" : r2.status.replace("_", " ")}
+                              {r2.is_disqualified || (r2.tab_switches ?? 0) > 3 || r2.status === "DISQUALIFIED"
+                                ? "DISQUALIFIED"
+                                : r2.status === "DISPATCHED_PENDING"
+                                ? "PENDING"
+                                : r2.status.replace("_", " ")}
                             </span>
                           </td>
                           <td className="px-4 py-3 text-center">
@@ -818,28 +864,65 @@ function RoundsManagerContent() {
                 </button>
               </div>
 
-              <div className="grid grid-cols-2 gap-3 text-center">
+              {/* Candidate Proctoring & Score Overview */}
+              <div className="grid grid-cols-3 gap-3 text-center">
                 <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
                   <div className="text-2xs text-slate-500 font-bold uppercase">Quiz Score</div>
                   <div className={`text-xl font-black ${
-                    selectedCandidateQuizDetail.round_2.status === "CLEARED" ? "text-emerald-700" : "text-rose-700"
+                    selectedCandidateQuizDetail.round_2.is_disqualified || (selectedCandidateQuizDetail.round_2.tab_switches ?? 0) > 3 || selectedCandidateQuizDetail.round_2.status === "DISQUALIFIED"
+                      ? "text-rose-700"
+                      : selectedCandidateQuizDetail.round_2.status === "CLEARED"
+                      ? "text-emerald-700"
+                      : "text-rose-700"
                   }`}>
                     {selectedCandidateQuizDetail.round_2.quiz_score}%
+                  </div>
+                </div>
+                <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                  <div className="text-2xs text-slate-500 font-bold uppercase">Tab Switches</div>
+                  <div className="text-base font-black mt-1">
+                    <span className={`px-2 py-0.5 rounded text-xs ${
+                      (selectedCandidateQuizDetail.round_2.tab_switches ?? 0) > 3 || selectedCandidateQuizDetail.round_2.is_disqualified
+                        ? "bg-rose-100 text-rose-800 font-black"
+                        : (selectedCandidateQuizDetail.round_2.tab_switches ?? 0) > 0
+                        ? "bg-amber-100 text-amber-800 font-bold"
+                        : "bg-emerald-100 text-emerald-800 font-bold"
+                    }`}>
+                      🛡️ {selectedCandidateQuizDetail.round_2.tab_switches ?? 0} Tabs
+                    </span>
                   </div>
                 </div>
                 <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
                   <div className="text-2xs text-slate-500 font-bold uppercase">Outcome</div>
                   <div className="text-xs font-black uppercase mt-1">
                     <span className={`px-2 py-0.5 rounded ${
-                      selectedCandidateQuizDetail.round_2.status === "CLEARED"
+                      selectedCandidateQuizDetail.round_2.is_disqualified || (selectedCandidateQuizDetail.round_2.tab_switches ?? 0) > 3 || selectedCandidateQuizDetail.round_2.status === "DISQUALIFIED"
+                        ? "bg-rose-100 text-rose-800 font-black"
+                        : selectedCandidateQuizDetail.round_2.status === "CLEARED"
                         ? "bg-emerald-100 text-emerald-800"
                         : "bg-rose-100 text-rose-800"
                     }`}>
-                      {selectedCandidateQuizDetail.round_2.status}
+                      {selectedCandidateQuizDetail.round_2.is_disqualified || (selectedCandidateQuizDetail.round_2.tab_switches ?? 0) > 3 || selectedCandidateQuizDetail.round_2.status === "DISQUALIFIED"
+                        ? "DISQUALIFIED"
+                        : selectedCandidateQuizDetail.round_2.status}
                     </span>
                   </div>
                 </div>
               </div>
+
+              {/* Proctoring Disqualification Notice */}
+              {(selectedCandidateQuizDetail.round_2.is_disqualified || (selectedCandidateQuizDetail.round_2.tab_switches ?? 0) > 3) && (
+                <div className="p-3.5 bg-rose-50 border border-rose-300 rounded-xl text-left space-y-1">
+                  <div className="flex items-center gap-1.5 font-bold text-rose-900 text-xs">
+                    <span>🚨</span>
+                    <span>Proctoring Integrity Disqualification</span>
+                  </div>
+                  <p className="text-2xs text-rose-800 leading-relaxed">
+                    {selectedCandidateQuizDetail.round_2.disqualification_reason ||
+                      `Candidate switched tabs ${selectedCandidateQuizDetail.round_2.tab_switches ?? 4} times during the technical quiz, exceeding the maximum allowed limit of 3 switches. The assessment was automatically terminated and awarded 0.0% score.`}
+                  </p>
+                </div>
+              )}
 
               {/* Skill Breakdown */}
               <div className="space-y-2">

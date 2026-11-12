@@ -59,6 +59,25 @@ export interface ResumeItem {
       credential_id?: string;
       is_verified: boolean;
     }>;
+    work_experience?: Array<{
+      id?: number;
+      job_title: string;
+      company: string;
+      location?: string;
+      start_date?: string;
+      end_date?: string;
+      is_current?: boolean;
+      description?: string;
+      highlights?: string[];
+      technologies?: string;
+    }>;
+    achievements?: Array<{
+      id?: number;
+      title: string;
+      issuer?: string;
+      date?: string;
+      description?: string;
+    }>;
     custom_sections?: Array<{ title: string; items: string[] }>;
     section_order: string[];
     section_visibility: Record<string, boolean>;
@@ -163,6 +182,16 @@ export const resumeApi = {
       bullet_points: string[];
     }>(`/api/v1/students/me/resumes/${id}/improve-project`, { project }),
 
+  improveExperience: (
+    id: number,
+    experience: { job_title: string; company: string; description?: string; technologies?: string }
+  ) =>
+    apiClient.post<{
+      status: string;
+      enhanced_description: string;
+      bullet_points: string[];
+    }>(`/api/v1/students/me/resumes/${id}/improve-experience`, { experience }),
+
   analyzeJobDescription: (id: number, job_description: string, job_id?: number) =>
     apiClient.post<{
       status: string;
@@ -209,5 +238,15 @@ export const resumeApi = {
       generated_at: string;
     }>(`/api/v1/students/me/resumes/${id}/export-pdf`, {}),
 
+  exportDocx: (id: number) =>
+    apiClient.post<{
+      status: string;
+      message: string;
+      docx_path: string;
+      download_url: string;
+    }>(`/api/v1/students/me/resumes/${id}/export-docx`, {}),
+
   getDownloadUrl: (id: number) => `/api/v1/students/me/resumes/${id}/download-pdf`,
+
+  getDocxDownloadUrl: (id: number) => `/api/v1/students/me/resumes/${id}/download-docx`,
 };

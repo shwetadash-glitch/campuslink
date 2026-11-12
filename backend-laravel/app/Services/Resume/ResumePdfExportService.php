@@ -27,10 +27,10 @@ class ResumePdfExportService
 
         if ($template === 'classic') {
             $fontFamily = 'Times';
-            $accentColor = [0.15, 0.15, 0.15]; // Traditional black/charcoal
+            $accentColor = [0.12, 0.12, 0.12]; // Traditional deep charcoal
         } elseif ($template === 'technical') {
             $fontFamily = 'Courier';
-            $accentColor = [0.10, 0.40, 0.45]; // Teal / slate
+            $accentColor = [0.10, 0.35, 0.40]; // Technical Slate Teal
         }
 
         $builder = new PdfDocumentBuilder($fontFamily);
@@ -38,25 +38,47 @@ class ResumePdfExportService
 
         // 1. Header (Personal Information)
         $fullName = $personal['full_name'] ?? 'Candidate Name';
-        $builder->addText($fullName, 18.0, true, $accentColor);
 
-        // Contact Line
-        $contactItems = array_filter([
-            $personal['email'] ?? null,
-            $personal['phone'] ?? null,
-            $personal['branch'] ? "{$personal['branch']} (Class of " . ($personal['graduation_year'] ?? '') . ")" : null,
-            $personal['location'] ?? null,
-        ]);
-        $builder->addText(implode('  |  ', $contactItems), 8.5, false, [0.4, 0.4, 0.4]);
+        if ($template === 'classic') {
+            // Traditional Centered Header for Classic Executive style
+            $builder->addText(strtoupper($fullName), 17.0, true, $accentColor);
+            
+            $contactItems = array_filter([
+                $personal['email'] ?? null,
+                $personal['phone'] ?? null,
+                $personal['location'] ?? null,
+                $personal['branch'] ? "{$personal['branch']} (Class of " . ($personal['graduation_year'] ?? '') . ")" : null,
+            ]);
+            $builder->addText(implode('  •  ', $contactItems), 8.5, false, [0.3, 0.3, 0.3]);
 
-        // Links Line
-        $linkItems = array_filter([
-            !empty($personal['linkedin_url']) ? "LinkedIn: " . $personal['linkedin_url'] : null,
-            !empty($personal['github_url']) ? "GitHub: " . $personal['github_url'] : null,
-            !empty($personal['portfolio_url']) ? "Portfolio: " . $personal['portfolio_url'] : null,
-        ]);
-        if (!empty($linkItems)) {
-            $builder->addText(implode('  |  ', $linkItems), 8.0, false, [0.35, 0.35, 0.65]);
+            $linkItems = array_filter([
+                !empty($personal['linkedin_url']) ? "LinkedIn: " . $personal['linkedin_url'] : null,
+                !empty($personal['github_url']) ? "GitHub: " . $personal['github_url'] : null,
+                !empty($personal['portfolio_url']) ? "Portfolio: " . $personal['portfolio_url'] : null,
+            ]);
+            if (!empty($linkItems)) {
+                $builder->addText(implode('  •  ', $linkItems), 8.0, false, [0.25, 0.25, 0.25]);
+            }
+        } else {
+            // Left-aligned Modern / Technical Header
+            $builder->addText($fullName, 18.0, true, $accentColor);
+
+            $contactItems = array_filter([
+                $personal['email'] ?? null,
+                $personal['phone'] ?? null,
+                $personal['branch'] ? "{$personal['branch']} (Class of " . ($personal['graduation_year'] ?? '') . ")" : null,
+                $personal['location'] ?? null,
+            ]);
+            $builder->addText(implode('  |  ', $contactItems), 8.5, false, [0.4, 0.4, 0.4]);
+
+            $linkItems = array_filter([
+                !empty($personal['linkedin_url']) ? "LinkedIn: " . $personal['linkedin_url'] : null,
+                !empty($personal['github_url']) ? "GitHub: " . $personal['github_url'] : null,
+                !empty($personal['portfolio_url']) ? "Portfolio: " . $personal['portfolio_url'] : null,
+            ]);
+            if (!empty($linkItems)) {
+                $builder->addText(implode('  |  ', $linkItems), 8.0, false, [0.30, 0.35, 0.65]);
+            }
         }
 
         $builder->setCurrentY($builder->getCurrentY() - 4.0);
@@ -65,7 +87,7 @@ class ResumePdfExportService
         $builder->setCurrentY($builder->getCurrentY() - 6.0);
 
         // 2. Sections in configured order & visibility
-        $sectionOrder = $content['section_order'] ?? ['summary', 'skills', 'projects', 'education', 'certifications'];
+        $sectionOrder = $content['section_order'] ?? ['summary', 'work_experience', 'skills', 'projects', 'education', 'certifications', 'achievements'];
         $sectionVisibility = $content['section_visibility'] ?? [];
 
         foreach ($sectionOrder as $sectionKey) {
@@ -84,6 +106,39 @@ class ResumePdfExportService
                     }
                     break;
 
+                case 'work_experience':
+                case 'experience':
+                    $experiences = $content['work_experience'] ?? ($content['experience'] ?? []);
+                    if (!empty($experiences)) {
+                        $builder->addSectionHeading("Work Experience & Internships", $accentColor);
+                        foreach ($experiences as $exp) {
+                            $role = $exp['job_title'] ?? ($exp['title'] ?? 'Software Engineer');
+                            $company = $exp['company'] ?? 'Company';
+                            $loc = !empty($exp['location']) ? " | {$exp['location']}" : '';
+                            $dates = (!empty($exp['start_date']) || !empty($exp['end_date']))
+                                ? " (" . ($exp['start_date'] ?: 'Start') . " – " . (!empty($exp['is_current']) ? 'Present' : ($exp['end_date'] ?: 'Present')) . ")"
+                                : '';
+
+                            $builder->addText("{$role} — {$company}{$loc}{$dates}", 9.5, true, [0.15, 0.15, 0.15]);
+                            if (!empty($exp['technologies'])) {
+                                $builder->addText("Tech: {$exp['technologies']}", 8.5, false, [0.35, 0.35, 0.35]);
+                            }
+
+                            if (!empty($exp['highlights'])) {
+                                foreach ($exp['highlights'] as $hl) {
+                                    $builder->addBulletPoint($hl, 8.5);
+                                }
+                            } elseif (!empty($exp['description'])) {
+                                $lines = explode("\n", $exp['description']);
+                                foreach ($lines as $line) {
+                                    $builder->addBulletPoint(trim($line), 8.5);
+                                }
+                            }
+                            $builder->setCurrentY($builder->getCurrentY() - 3.0);
+                        }
+                    }
+                    break;
+
                 case 'skills':
                     if (!empty($content['skills'])) {
                         $builder->addSectionHeading("Technical & Domain Skills", $accentColor);
@@ -93,7 +148,7 @@ class ResumePdfExportService
                             $categoryName = $category ?: 'Core Technologies';
                             $skillsList = $items->pluck('name')->implode(', ');
                             $builder->addText("{$categoryName}:", 9.0, true, [0.15, 0.15, 0.15], null, false);
-                            $builder->addText(" {$skillsList}", 9.0, false, [0.25, 0.25, 0.25], $builder->getMargin() + 110);
+                            $builder->addText(" {$skillsList}", 9.0, false, [0.25, 0.25, 0.25], $builder->getMargin() + 115);
                         }
                     }
                     break;
@@ -104,7 +159,8 @@ class ResumePdfExportService
                         foreach ($content['projects'] as $proj) {
                             $title = $proj['title'] ?? 'Project';
                             $tech = !empty($proj['technologies']) ? " [{$proj['technologies']}]" : '';
-                            $builder->addText("{$title}{$tech}", 9.5, true, [0.15, 0.15, 0.15]);
+                            $url = !empty($proj['project_url']) ? " — {$proj['project_url']}" : '';
+                            $builder->addText("{$title}{$tech}{$url}", 9.5, true, [0.15, 0.15, 0.15]);
 
                             if (!empty($proj['highlights'])) {
                                 foreach ($proj['highlights'] as $hl) {
@@ -148,6 +204,20 @@ class ResumePdfExportService
                             $verified = !empty($cert['is_verified']) ? " [Verified]" : "";
 
                             $builder->addText("{$name}{$org}{$date}{$verified}", 9.0, false, [0.2, 0.2, 0.2]);
+                        }
+                    }
+                    break;
+
+                case 'achievements':
+                    $achievements = $content['achievements'] ?? [];
+                    if (!empty($achievements)) {
+                        $builder->addSectionHeading("Honors & Key Achievements", $accentColor);
+                        foreach ($achievements as $ach) {
+                            $title = is_array($ach) ? ($ach['title'] ?? '') : (string) $ach;
+                            $issuer = is_array($ach) && !empty($ach['issuer']) ? " — {$ach['issuer']}" : '';
+                            $date = is_array($ach) && !empty($ach['date']) ? " ({$ach['date']})" : '';
+                            $desc = is_array($ach) && !empty($ach['description']) ? ": {$ach['description']}" : '';
+                            $builder->addBulletPoint("{$title}{$issuer}{$date}{$desc}", 8.5);
                         }
                     }
                     break;

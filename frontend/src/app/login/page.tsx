@@ -7,6 +7,18 @@ import { Input } from "@/components/ui/Input";
 import { FormField } from "@/components/forms/FormField";
 import { FormError } from "@/components/forms/FormError";
 
+interface LoginResponse {
+  access_token: string;
+  refresh_token: string;
+  token_type: string;
+  user?: {
+    id: number;
+    email: string;
+    role: string;
+    is_active: boolean;
+  };
+}
+
 export default function LoginPage() {
   const [email, setEmail] = useState("student1@college.edu");
   const [password, setPassword] = useState("password");
@@ -19,18 +31,15 @@ export default function LoginPage() {
     setError("");
     setLoading(true);
     try {
-      const form = new URLSearchParams();
-      form.append("username", email.trim());
-      form.append("password", password);
-
       const { apiClient } = await import("@/services/apiClient");
-      const data = await apiClient.post<any>("/api/v1/auth/login", {
+      const data = await apiClient.post<LoginResponse>("/api/v1/auth/login", {
         username: email.trim(),
+        email: email.trim(),
         password
       });
-      login(data.access_token, data.refresh_token);
-    } catch (err: any) {
-      setError(err?.message || "Network error: Cannot reach backend server.");
+      login(data.access_token, data.refresh_token, data.user);
+    } catch (err: unknown) {
+      setError((err as Error)?.message || "Network error: Cannot reach backend server.");
       setLoading(false);
     }
   };

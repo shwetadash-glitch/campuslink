@@ -14,7 +14,7 @@ interface AuthContextType {
   user: User | null;
   token: string | null;
   loading: boolean;
-  login: (token: string, refresh: string) => void;
+  login: (token: string, refresh: string, userData?: User) => void;
   logout: () => void;
 }
 
@@ -50,8 +50,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
       try {
         const { apiClient } = await import("@/services/apiClient");
-        const data = await apiClient.get<User>("/api/v1/auth/me");
-        setUser((data as any).data || data);
+        const data = await apiClient.get<User | { data: User }>("/api/v1/auth/me");
+        setUser("data" in data && data.data ? data.data : (data as User));
       } catch (err: any) {
         localStorage.removeItem('access_token');
         localStorage.removeItem('token');
@@ -68,11 +68,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     fetchUser();
   }, [pathname]);
 
-  const login = (authToken: string, refresh: string) => {
+  const login = (authToken: string, refresh: string, userData?: User) => {
     localStorage.setItem('access_token', authToken);
     localStorage.setItem('token', authToken);
     localStorage.setItem('refresh_token', refresh);
     setToken(authToken);
+    if (userData) {
+      setUser(userData);
+    }
     window.location.href = '/dashboard';
   };
 

@@ -67,7 +67,8 @@ class AuthController extends Controller {
     }
 
     public function login(LoginRequest $request) {
-        $user = User::where('email', $request->username)->first();
+        $identifier = $request->input('email') ?? $request->input('username');
+        $user = User::where('email', $identifier)->first();
         if (!$user || !Hash::check($request->password, $user->password_hash)) {
             return response()->json(['detail' => 'Incorrect email or password'], 401); // 401 in FastAPI
         }
@@ -79,7 +80,8 @@ class AuthController extends Controller {
         return response()->json([
             'access_token' => $token,
             'refresh_token' => $refreshToken,
-            'token_type' => 'bearer'
+            'token_type' => 'bearer',
+            'user' => new UserResource($user)
         ]);
     }
 
